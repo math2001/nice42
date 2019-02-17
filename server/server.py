@@ -20,7 +20,7 @@ PLAYER_COUNT = count()
 async def send_game_state_forever():
     while True:
         for player in players.values():
-            await net.write(player.stream, {
+            await player.stream.write({
                 "type": "update",
                 "players": [p.serializable for p in players.values() if p.is_on_map],
                 "lps": lps
@@ -49,11 +49,11 @@ async def handle_client(player):
 async def server(stream):
     log.info("New connection")
 
-    player = Player(next(PLAYER_COUNT), stream)
+    player = Player(next(PLAYER_COUNT), net.JSONStream(stream))
 
     try:
         await handle_client(player)
-    except (net.ConnectionClosed, trio.BrokenResourceError):
+    except net.ConnectionClosed:
         # we couldn't read or we couldn't write
         log.info(f"{player} connection closed")
     except Exception as e:

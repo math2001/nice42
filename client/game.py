@@ -28,7 +28,7 @@ async def fetch_updates_forever(stream, sendch):
     """ This'll get more fancy as network will become the bottleneck
     (it's not yet) """
     while True:
-        state = await net.read(stream)
+        state = await stream.read()
         if state['type'] != 'update':
             raise ValueError(f"Expected type to be 'update' in {state}")
 
@@ -52,7 +52,7 @@ class Game(Scene):
         new = get_keyboard_state()
         if new != self.keyboard_state:
             self.keyboard_state = new
-            self.nursery.start_soon(net.write, self.stream, {
+            self.nursery.start_soon(self.stream.write, {
                 "type": "keyboard",
                 "state": self.keyboard_state
             })

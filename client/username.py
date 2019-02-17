@@ -11,8 +11,8 @@ from client.scene import Scene
 class Username(Scene):
 
     async def init(self):
-        Scene.stream = await trio.open_tcp_stream("127.0.0.1", PORT)
-        await net.write(Scene.stream, {"type": "username", "username": "math2001"})
+        Scene.stream = net.JSONStream(await trio.open_tcp_stream("127.0.0.1", PORT))
+        await Scene.stream.write({"type": "username", "username": "math2001"})
 
     async def update(self):
         return 'game'

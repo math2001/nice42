@@ -70,11 +70,11 @@ class App:
             # start the scene nursery
             async with trio.open_nursery() as snursery:
                 self.scene = self.scenes[new](snursery)
-                cancel_scope = trio.move_on_after(1)
+                cancel_scope = trio.move_on_after(10)
                 with cancel_scope:
                     await self.scene.init()
                 if cancel_scope.cancelled_caught:
-                    raise ValueError(f"{scene}.init took too long")
+                    raise ValueError(f"{new}.init took too long")
                 new = None
 
                 while new is None:
@@ -102,7 +102,6 @@ class App:
     async def run(self):
         await self.mainloop()
         Scene.nursery.cancel_scope.cancel()
-
 
     
 async def run():

@@ -27,7 +27,7 @@ class Player:
         self.keyboard_state = 0
 
     async def get_name(self):
-        resp = await net.read(self.stream)
+        resp = await self.stream.read()
 
         if resp['type'] != 'username':
             raise ValueError(f"invalid response: type should be 'username' in {resp}")
@@ -65,13 +65,13 @@ class Player:
     async def get_user_input_forever(self):
         log.info(f"{self} Listening for user input")
         while True:
-            resp = await net.read(self.stream)
+            resp = await self.stream.read()
             if resp['type'] != 'keyboard':
                 raise ValueError(f"Expected type='keyboard' in {resp}")
             self.keyboard_state = resp['state']
 
     async def killed(self):
-        await net.write(self.stream, {
+        await self.stream.write({
             "type": "dead"
         })
         self.dead = True
