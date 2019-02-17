@@ -12,6 +12,12 @@ class Player:
         self.stream = stream
         self.pos = None
 
+        self.color = [
+            random.randint(0, 255),
+            random.randint(0, 255),
+            random.randint(0, 255),
+        ]
+
         # 0 top, 1 right, 2 bottom and 3 is left
         self.weak_side = random.randint(0, 3)
 
@@ -36,14 +42,21 @@ class Player:
         while True:
             resp = await net.read(self.stream)
 
-    async def send_player_state_forever(self):
+    async def send_player_state_forever(self, players):
         while True:
             net.write(self.stream, {
                 "type": "update",
-                "pos": self.pos,
+                "players": list(players.values())
             })
             await trio.sleep(REFRESH_RATE)
 
     @property
     def is_on_map(self):
         return self.pos is not None
+
+    @property
+    def get_sendable_info(self):
+        return {
+            "pos": self.pos,
+            "color": self.color
+        }

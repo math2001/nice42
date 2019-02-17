@@ -15,7 +15,7 @@ async def handle_client(stream):
     )
     with trio.open_nursery() as n:
         n.start_soon(player.get_user_input_forever())
-        n.start_soon(player.send_player_state_forever())
+        n.start_soon(player.send_player_state_forever(players))
 
 async def server(stream):
     log.info("New connection")
