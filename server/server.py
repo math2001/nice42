@@ -13,6 +13,7 @@ async def handle_client(stream):
         random.randint(0, MAP_SIZE[0] - PLAYER_SIZE[0]),
         random.randint(0, MAP_SIZE[1] - PLAYER_SIZE[1]),
     )
+
     async with trio.open_nursery() as n:
         n.start_soon(player.get_user_input_forever())
         n.start_soon(player.send_player_state_forever(players))
@@ -32,6 +33,9 @@ async def server(stream):
 async def gameloop(nursery):
     while True:
         for player in players.values():
+
+            player.move()
+
             # if 2 player collide, one of them has to die
             # keep shit simple for now. Random'll do
             for target in players.values():

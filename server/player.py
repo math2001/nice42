@@ -22,6 +22,8 @@ class Player:
         self.weak_side = random.randint(0, 3)
 
         self.dead = False
+        self.speed = 1
+        self.keyboard_state = 0
 
     async def get_name(self):
         resp = await net.read(self.stream)
@@ -43,6 +45,9 @@ class Player:
     async def get_user_input_forever(self):
         while True:
             resp = await net.read(self.stream)
+            if resp['type'] != 'keyboard':
+                raise ValueError(f"Expected type='keyboard' in {resp}")
+            self.keyboard_state = resp['state']
 
     async def send_player_state_forever(self, players):
         while True:
@@ -61,6 +66,17 @@ class Player:
             "type": "dead"
         })
         self.dead = True
+
+    def move(self):
+        """ Move according to the keyboard state """
+        if self.keyboard_state & LEFT:
+            self.pos[0] -= 1
+        if self.keyboard_state & RIGHT:
+            self.pos[0] += 1
+        if self.keyboard_state & UP:
+            self.pos[1] -= 1
+        if self.keyboard_state & DOWN:
+            self.pos[1] += 1
 
     @property
     def is_on_map(self):
