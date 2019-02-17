@@ -1,8 +1,10 @@
 import sys
+import logging
 
 log = None
 
 def getLogger():
+    global log
     if log:
         return log
 

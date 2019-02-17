@@ -1,6 +1,8 @@
-import net
+import trio
 import random
+import net
 from log import getLogger
+from constants import *
 
 log = getLogger()
 
@@ -40,9 +42,29 @@ class Player:
     def spawn(self, pos):
         if self.is_on_map:
             raise RuntimeError("player already spawned")
-        self.pos = pos
+        self.pos = list(pos)
+
+    def collides(self, target):
+        p = self.pos
+        t = target.pos
+        w = PLAYER_SIZE[0]
+        h = PLAYER_SIZE[1]
+        return (
+            (
+                # target left side between player left and right
+                p[0] <= t[0] <= p[0] + w
+                # target top side between player top and bottom
+                and p[1] <= t[1] <= p[1] + h
+            ) or (
+                # target right side between player left and right
+                p[0] <= t[0] + w <= p[0] + w
+                # target top side between player top and bottom
+                and p[1] <= t[1] + h <= p[1] + h
+            )
+        )
 
     async def get_user_input_forever(self):
+        log.info(f"{self} Listening for user input")
         while True:
             resp = await net.read(self.stream)
             if resp['type'] != 'keyboard':
@@ -50,6 +72,7 @@ class Player:
             self.keyboard_state = resp['state']
 
     async def send_player_state_forever(self, players):
+        log.info(f"{self} Sending player state")
         while True:
             if self.dead:
                 # gross, but stops the nursery and all
@@ -57,11 +80,11 @@ class Player:
                 raise ValueError("I'm dead!")
             await net.write(self.stream, {
                 "type": "players",
-                "players": list(p for p in players.values() if p.is_on_map)
+                "players": list(p.serializable for p in players.values() if p.is_on_map)
             })
             await trio.sleep(REFRESH_RATE)
 
-    async def dead(self):
+    async def killed(self):
         await net.write(self.stream, {
             "type": "dead"
         })
@@ -83,8 +106,14 @@ class Player:
         return self.pos is not None
 
     @property
-    def get_sendable_info(self):
+    def serializable(self):
         return {
             "pos": self.pos,
             "color": self.color
         }
+
+    def __str__(self):
+        return f"<Player {self.name!r} {self.color}>"
+
+    def __repr__(self):
+        return str(self)

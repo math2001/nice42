@@ -4,6 +4,8 @@ from constants import *
 
 log = getLogger()
 
+# TODO: user trio.Semaphore
+
 class ConncetionClosed(Exception):
     pass
 
@@ -16,12 +18,12 @@ async def read(stream):
     if not data:
         raise ConncetionClosed(f"stream: {stream}")
     try:
-        obj = json.load(stream)
+        obj = json.loads(str(data, encoding='utf-8'))
     except ValueError as e:
         return FailParse("could not parse json")
     return obj
 
 async def write(stream, object):
     log.debug(f"Sending {object}")
-    await stream.send_all(json.dumps(object))
+    await stream.send_all(bytes(json.dumps(object), encoding='utf-8'))
     
