@@ -7,6 +7,9 @@ from log import getLogger
 from itertools import count
 from constants import *
 
+# TODO: change this per player
+REFRESH_RATE = .1 # s
+
 players = {}
 lps = None
 
