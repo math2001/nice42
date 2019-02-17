@@ -20,7 +20,7 @@ def get_keyboard_state():
         state |= LEFT
     return state
 
-async def update_players_forever(players, stream):
+async def fetch_player_updates_forever(players, stream):
     while True:
         state = await net.read(stream)
         if state['type'] != 'players':
@@ -32,15 +32,18 @@ async def gameloop(stream, nursery):
     keyboard_state = 0
     players = []
     log.info("Start fetching player updates")
-    nursery.start_soon(update_players_forever, players, stream)
+    nursery.start_soon(fetch_player_updates_forever, players, stream)
     while True:
         for e in pygame.event.get():
             if e.type == pygame.QUIT:
+                log.info("Stopping game loop")
+                nursery.cancel_scope.cancel()
                 return
 
         # send keyboard state if it has changed
         new = get_keyboard_state()
         if new != keyboard_state:
+            log.info(f"Keyboard state update: {new}")
             nursery.start_soon(net.write, stream, {"type": "keyboard", "state": new})
             keyboard_state = new
 
@@ -49,6 +52,7 @@ async def gameloop(stream, nursery):
             rect = pygame.Rect(player['pos'], PLAYER_SIZE)
             pygame.draw.rect(screen, player['color'], rect)
 
+        pygame.display.flip()
         await trio.sleep(0)
     
 
@@ -65,6 +69,6 @@ async def run():
         })
         screen = pygame.display.set_mode(MAP_SIZE)
         log.info("Starting game loop")
-        async with trio.open_nursery() as n:
-            n.start_soon(gameloop, stream, n)
+        async with trio.open_nursery() as nursery:
+            await gameloop(stream, nursery)
     log.info("Client ended")
