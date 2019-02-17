@@ -37,10 +37,16 @@ async def fetch_updates_forever(stream, sendch):
 
 class Game(Scene):
 
+    """ This scenes is fairly dumb renderer of the updates that are given
+    by the server
+    It uses a buffered channel so that it's always one update *late*. Like this,
+    we can make movements smoother without needing to predict anything.
+    """
+
     def __init__(self, nursery):
         self.nursery = nursery
         self.keyboard_state = 0
-        sendch, self.getch = trio.open_memory_channel(0)
+        sendch, self.getch = trio.open_memory_channel(max_buffer_size=2)
         self.nursery.start_soon(fetch_updates_forever, Scene.stream, sendch)
 
         self.game_state = None
@@ -48,7 +54,7 @@ class Game(Scene):
     def debug_string(self):
         pass
 
-    async def update(self):
+    async def update(self, fps):
         new = get_keyboard_state()
         if new != self.keyboard_state:
             self.keyboard_state = new
@@ -56,7 +62,8 @@ class Game(Scene):
                 "type": "keyboard",
                 "state": self.keyboard_state
             })
-        if self.getch.statistics().tasks_waiting_send > 0:
+
+        if self.getch.statistics().tasks_waiting_send > 1:
             self.game_state = await self.getch.receive()
 
     def render(self):

@@ -14,7 +14,7 @@ class Username(Scene):
         Scene.stream = net.JSONStream(await trio.open_tcp_stream("127.0.0.1", PORT))
         await Scene.stream.write({"type": "username", "username": "math2001"})
 
-    async def update(self):
+    async def update(self, fps):
         return 'game'
 
     def render(self):

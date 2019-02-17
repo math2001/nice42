@@ -10,6 +10,8 @@ from constants import *
 # TODO: change this per player
 REFRESH_RATE = .1 # s
 
+# TODO: BUG! don't use global variables. Everything's gonna break
+
 players = {}
 lps = None
 
@@ -18,6 +20,7 @@ log = getLogger()
 PLAYER_COUNT = count()
 
 async def send_game_state_forever():
+    # TODO: don't await for writing
     while True:
         for player in players.values():
             await player.stream.write({

@@ -51,7 +51,7 @@ class App:
     def show_debug_infos(self):
         text = f"{self.scene.debug_string()} " \
                f"{classname(self.scene)} " \
-               f"{round(self.clock.get_fps()):2} fps"
+               f"{round(self.fps):2} fps"
         rect = fonts.mono.get_rect(text)
         rect.bottomright = Screen.rect.bottomright
         fonts.mono.render_to(Screen.surface, rect, text, fgcolor=WHITE,
@@ -91,7 +91,10 @@ class App:
                         return snursery.cancel_scope.cancel()
 
                     Screen.surface.fill(BLACK)
-                    await self.scene.update()
+
+                    self.fps = self.clock.get_fps()
+
+                    await self.scene.update(fps)
                     self.scene.render()
                     if self.debug:
                         self.show_debug_infos()
