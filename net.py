@@ -1,3 +1,4 @@
+import trio
 import json
 from collections import deque
 from log import getLogger
