@@ -3,7 +3,7 @@ import logging
 
 log = None
 
-def getLogger():
+def getLogger(level='INFO'):
     global log
     if log:
         return log
@@ -13,7 +13,7 @@ def getLogger():
                                   datefmt='%Y-%m-%d %H:%M:%S')
     handler = logging.StreamHandler(stream=sys.stdout)
     handler.setFormatter(formatter)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(getattr(logging, level))
     logger.addHandler(handler)
     log = logger
     return log
