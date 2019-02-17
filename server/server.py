@@ -1,4 +1,5 @@
 import trio
+import time
 import random
 import net
 from server.player import Player
@@ -7,10 +8,21 @@ from itertools import count
 from constants import *
 
 players = {}
+lps = None
 
 log = getLogger()
 
 PLAYER_COUNT = count()
+
+async def send_game_state_forever():
+    while True:
+        for player in players.values():
+            await net.write(player.stream, {
+                "type": "update",
+                "players": [p.serializable for p in players.values() if p.is_on_map],
+                "lps": lps
+            })
+        await trio.sleep(REFRESH_RATE)
 
 async def handle_client(player):
     log.debug("Waiting for name")
@@ -29,7 +41,7 @@ async def handle_client(player):
         # these raise 2 different errors, which means that both of them have
         # to be handled
         n.start_soon(player.get_user_input_forever)
-        n.start_soon(player.send_player_state_forever, players)
+        n.start_soon(send_game_state_forever)
 
 async def server(stream):
     log.info("New connection")
@@ -48,8 +60,18 @@ async def server(stream):
         del players[player.id]
 
 async def gameloop(nursery):
+    global lps
     log.info("Start game loop")
+    # use to calculate the number of loops per second
+    loops = 0
+    last = time.time()
     while True:
+        loops += 1
+        if time.time() - last >= 1:
+            lps = loops
+            loops = 0
+            last = time.time()
+
         for player in players.values():
 
             player.move()

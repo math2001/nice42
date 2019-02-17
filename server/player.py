@@ -1,4 +1,3 @@
-import trio
 import random
 import net
 from log import getLogger
@@ -24,7 +23,7 @@ class Player:
         self.weak_side = random.randint(0, 3)
 
         self.dead = False
-        self.speed = 1
+        self.speed = 2
         self.keyboard_state = 0
 
     async def get_name(self):
@@ -70,19 +69,6 @@ class Player:
             if resp['type'] != 'keyboard':
                 raise ValueError(f"Expected type='keyboard' in {resp}")
             self.keyboard_state = resp['state']
-
-    async def send_player_state_forever(self, players):
-        log.info(f"{self} Sending player state")
-        while True:
-            if self.dead:
-                # gross, but stops the nursery and all
-                # TODO: improve this
-                raise ValueError("I'm dead!")
-            await net.write(self.stream, {
-                "type": "players",
-                "players": list(p.serializable for p in players.values() if p.is_on_map)
-            })
-            await trio.sleep(REFRESH_RATE)
 
     async def killed(self):
         await net.write(self.stream, {
