@@ -52,7 +52,10 @@ class Game(Scene):
         new = get_keyboard_state()
         if new != self.keyboard_state:
             self.keyboard_state = new
-
+            self.nursery.start_soon(net.write, self.stream, {
+                "type": "keyboard",
+                "state": self.keyboard_state
+            })
         if self.getch.statistics().tasks_waiting_send > 0:
             self.game_state = await self.getch.receive()
 

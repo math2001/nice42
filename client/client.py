@@ -109,7 +109,7 @@ class App:
 
         self.going = True
         self.clock = pygame.time.Clock()
-        self.max_fps = 40
+        self.max_fps = 60
         self.scene = None
         self.debug = True
 
