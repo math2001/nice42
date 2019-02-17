@@ -10,10 +10,10 @@ PLAYER_COUNT = count()
 async def handle_client(stream):
     await player.get_name()
     player.spawn(
-        random.randint(0, MAP_SIZE - PLAYER_SIZE),
-        random.randint(0, MAP_SIZE - PLAYER_SIZE),
+        random.randint(0, MAP_SIZE[0] - PLAYER_SIZE[0]),
+        random.randint(0, MAP_SIZE[1] - PLAYER_SIZE[1]),
     )
-    with trio.open_nursery() as n:
+    async with trio.open_nursery() as n:
         n.start_soon(player.get_user_input_forever())
         n.start_soon(player.send_player_state_forever(players))
 
@@ -40,12 +40,10 @@ async def gameloop(nursery):
                         n.start_soon(player.dead())
                     else:
                         n.start_soon(target.dead())
-
-
         await trio.sleep(0)
 
 async def main():
-    with trio.open_nursery() as n:
+    async with trio.open_nursery() as n:
         n.start_soon(trio.serve_tcp, server, PORT)
         n.start_soon(gameloop, n)
 

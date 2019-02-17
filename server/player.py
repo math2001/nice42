@@ -21,6 +21,8 @@ class Player:
         # 0 top, 1 right, 2 bottom and 3 is left
         self.weak_side = random.randint(0, 3)
 
+        self.dead = False
+
     async def get_name(self):
         resp = await net.read(self.stream)
 
@@ -44,11 +46,21 @@ class Player:
 
     async def send_player_state_forever(self, players):
         while True:
-            net.write(self.stream, {
-                "type": "update",
-                "players": list(players.values())
+            if self.dead:
+                # gross, but stops the nursery and all
+                # TODO: improve this
+                raise ValueError("I'm dead!")
+            await net.write(self.stream, {
+                "type": "players",
+                "players": list(p for p in players.values() if p.is_on_map)
             })
             await trio.sleep(REFRESH_RATE)
+
+    async def dead(self):
+        await net.write(self.stream, {
+            "type": "dead"
+        })
+        self.dead = True
 
     @property
     def is_on_map(self):

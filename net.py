@@ -20,3 +20,8 @@ async def read(stream):
     except ValueError as e:
         return FailParse("could not parse json")
     return obj
+
+async def write(stream, object):
+    log.debug(f"Sending {object}")
+    await stream.send_all(json.dumps(object))
+    
