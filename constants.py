@@ -1,0 +1,8 @@
+PORT = 9042
+BUFSIZE = 16384
+
+MAP_SIZE = 500
+PLAYER_SIZE = 20
+
+# TODO: change this per player
+REFRESH_RATE = 100 # ms
