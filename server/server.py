@@ -1,5 +1,6 @@
 import trio
 import random
+import net
 from server.player import Player
 from log import getLogger
 from itertools import count
@@ -32,6 +33,9 @@ async def server(stream):
 
     try:
         await handle_client(player)
+    except net.ConnectionClosed:
+        log.info(f"{player} connection closed")
+        del players[player.id]
     except Exception as e:
         log.exception("Handler crashed")
         try:

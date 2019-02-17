@@ -47,13 +47,14 @@ async def gameloop(stream, nursery):
             nursery.start_soon(net.write, stream, {"type": "keyboard", "state": new})
             keyboard_state = new
 
+        screen.fill(0)
         # render the players
         for player in players:
             rect = pygame.Rect(player['pos'], PLAYER_SIZE)
             pygame.draw.rect(screen, player['color'], rect)
 
         pygame.display.flip()
-        await trio.sleep(0)
+        await trio.sleep(.05)
     
 
 async def run():
