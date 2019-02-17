@@ -43,7 +43,7 @@ async def gameloop(stream, nursery):
         # send keyboard state if it has changed
         new = get_keyboard_state()
         if new != keyboard_state:
-            log.info(f"Keyboard state update: {new}")
+            log.debug(f"Keyboard state update: {new}")
             nursery.start_soon(net.write, stream, {"type": "keyboard", "state": new})
             keyboard_state = new
 

@@ -13,7 +13,7 @@ log = getLogger()
 PLAYER_COUNT = count()
 
 async def handle_client(player):
-    log.info("Waiting for name")
+    log.debug("Waiting for name")
     await player.get_name()
     player.spawn((
         random.randint(0, MAP_SIZE[0] - PLAYER_SIZE[0]),
@@ -23,6 +23,11 @@ async def handle_client(player):
     players[player.id] = player
 
     async with trio.open_nursery() as n:
+        # if the client leaves, there's 2 different thing that can happen:
+        # 1. I try to read from a dead connection
+        # 2. I try to write to a dead connection
+        # these raise 2 different errors, which means that both of them have
+        # to be handled
         n.start_soon(player.get_user_input_forever)
         n.start_soon(player.send_player_state_forever, players)
 
@@ -33,15 +38,14 @@ async def server(stream):
 
     try:
         await handle_client(player)
-    except net.ConnectionClosed:
+    except (net.ConnectionClosed, trio.BrokenResourceError):
+        # we couldn't read or we couldn't write
         log.info(f"{player} connection closed")
-        del players[player.id]
     except Exception as e:
         log.exception("Handler crashed")
-        try:
-            del players[player.id]
-        except KeyError:
-            log.info("Player quited on before sending its name")
+    finally:
+        log.info(f"{player} removed")
+        del players[player.id]
 
 async def gameloop(nursery):
     log.info("Start game loop")
@@ -60,7 +64,7 @@ async def gameloop(nursery):
                         nursery.start_soon(player.killed)
                     else:
                         nursery.start_soon(target.killed)
-        await trio.sleep(0)
+        await trio.sleep(0.01)
 
 async def run():
     async with trio.open_nursery() as n:

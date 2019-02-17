@@ -9,9 +9,15 @@ if len(sys.argv) != 2:
     print(" - client")
     exit(2)
 
-if sys.argv[1] == 'server':
-    import server
-    trio.run(server.run)
-elif sys.argv[1] == 'client':
-    import client
-    trio.run(client.run)
+def main():
+    if sys.argv[1] == 'server':
+        import server
+        trio.run(server.run)
+    elif sys.argv[1] == 'client':
+        import client
+        trio.run(client.run)
+
+try:
+    main()
+except KeyboardInterrupt:
+    print("Bye")

@@ -13,7 +13,7 @@ def getLogger():
                                   datefmt='%Y-%m-%d %H:%M:%S')
     handler = logging.StreamHandler(stream=sys.stdout)
     handler.setFormatter(formatter)
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
     logger.addHandler(handler)
     log = logger
     return log
