@@ -15,21 +15,23 @@ class JSONStream:
     def __init__(self, stream):
         self.stream = stream
         self._reading_deque = deque()
-        self._read_semaphore = trio.Semaphore(1)
-        self._write_semaphore = trio.Semaphore(1)
+        # self._read_semaphore = trio.Semaphore(1)
+        # self._write_semaphore = trio.Semaphore(1)
+        self._semaphore = trio.Semaphore(1)
+        # self.stream.aclose = None
 
     async def read(self):
         if len(self._reading_deque) == 0:
-            log.debug("Acquiring writing semaphore")
-            await self._read_semaphore.acquire()
+            log.debug("Acquiring reading semaphore")
+            await self._semaphore.acquire()
             log.debug("Reading...")
 
             try:
                 data = await self.stream.receive_some(BUFSIZE)
             except trio.BrokenResourceError:
                 raise ConnectionClosed(f"reading from {self.stream}")
-            log.debug(f"Receive: {data!r}")
-            self._read_semaphore.release()
+            log.debug(f"(release) Receive: {data!r}")
+            self._semaphore.release()
 
             if not data:
                 raise ConnectionClosed(f"reading from {self.stream}")
@@ -45,10 +47,10 @@ class JSONStream:
 
     async def write(self, object):
         log.debug("Acquiring writing semaphore")
-        await self._write_semaphore.acquire()
+        await self._semaphore.acquire()
         log.debug(f"Sending {object}")
         try:
             await self.stream.send_all(bytes(json.dumps(object) + '\n', encoding='utf-8'))
         except trio.BrokenResourceError:
             raise ConnectionClosed(f"writing on {self.stream}")
-        self._write_semaphore.release()
+        self._semaphore.release()

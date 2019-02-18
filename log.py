@@ -3,7 +3,7 @@ import logging
 
 log = None
 
-def getLogger(level='INFO'):
+def getLogger(level='DEBUG'):
     global log
     if log:
         return log
