@@ -78,7 +78,15 @@ class Game:
             self.players[player.id] = player
             self.players_semaphore.release()
 
-        await player.get_user_input_forever()
+            try:
+                await player.get_user_input_forever()
+            except net.ConnectionClosed:
+                log.info(f"{player} connection closed")
+                await player.killed()
+                await self.players_semaphore.acquire()
+                del self.players[player.id]
+                self.players_semaphore.release()
+
 
     async def initiate_player(self, player):
         log.debug("Waiting for player's name")

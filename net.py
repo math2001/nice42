@@ -33,7 +33,7 @@ class JSONStream:
             while i == -1:
                 data = await self._stream.receive_some(BUFSIZE)
                 if not data:
-                    raise net.ConnectionClosed("stream closed")
+                    raise ConnectionClosed("stream closed")
                 self._read_buf += data
                 i = data.find(b'\n')
             i += len(self._read_buf)
@@ -54,3 +54,10 @@ class JSONStream:
         except trio.BrokenResourceError:
             raise ConnectionClosed(f"writing on {self._stream}")
         self._write_semaphore.release()
+
+    async def aclose(self):
+        await self._write_semaphore.acquire()
+        await self._read_semaphore.acquire()
+        await self._stream.aclose()
+        self._write_semaphore.release()
+        self._read_semaphore.release()

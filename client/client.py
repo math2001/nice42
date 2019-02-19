@@ -80,7 +80,7 @@ class App:
                 while new is None:
                     for event in pygame.event.get():
                         if event.type == QUIT:
-                            return snursery.cancel_scope.cancel()
+                            return await self._exit()
 
                         caught = self.scene.handle_event(event)
                         if not caught and event.type == KEYDOWN and event.key == K_BACKSPACE:
@@ -88,7 +88,7 @@ class App:
 
                     new = await self.scene.update()
                     if new is False:
-                        return snursery.cancel_scope.cancel()
+                        return await self._exit()
 
                     Screen.surface.fill(BLACK)
                     await self.scene.update()
@@ -99,10 +99,16 @@ class App:
                     pygame.display.flip()
                     await trio.sleep(0)
 
-    async def run(self):
-        await self.mainloop()
+    async def _exit(self):
+        if hasattr(Scene, 'stream'):
+            await Scene.stream.aclose()
+        # TODO: I shouldn't have to do this. What are the tasks that are still
+        # running?
         Scene.nursery.cancel_scope.cancel()
 
+    async def run(self):
+        await self.mainloop()
+        await self._exit()
     
 async def run():
     pygame.init()
