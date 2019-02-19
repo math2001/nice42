@@ -58,7 +58,7 @@ class Game:
             await trio.sleep(.01)
             self.loops_times.append(time.time() - last)
             last = time.time()
-            self.lps = round(sum(self.loops_times) / len(self.loops_times) * 1000, 2)
+            self.lps = int(round(sum(self.loops_times) / len(self.loops_times) * 1000))
 
     async def accept_players(self, stream):
         """ Accepts players and puts them into self.players once

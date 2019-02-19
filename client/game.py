@@ -46,7 +46,10 @@ class Game(Scene):
         self.game_state = None
 
     def debug_string(self):
-        pass
+        lps = None
+        if self.game_state:
+            lps = self.game_state['lps']
+        return f"lps: {lps}"
 
     async def update(self):
         new = get_keyboard_state()
