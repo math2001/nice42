@@ -32,6 +32,7 @@ class JSONStream:
 
             while i == -1:
                 data = await self._stream.receive_some(BUFSIZE)
+                log.debug(f"Adding to buffer {data!r}")
                 if not data:
                     raise ConnectionClosed("stream closed")
                 self._read_buf += data
@@ -40,8 +41,10 @@ class JSONStream:
 
         # we found a line feed!
         string = str(self._read_buf[:i], encoding='utf-8')
+        log.debug(f"Read line {string!r}")
         self._read_buf[:i] = []
         self._read_semaphore.release()
+        log.debug("Release reading semaphore")
         return json.loads(string)
 
 

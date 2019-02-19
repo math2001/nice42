@@ -87,7 +87,6 @@ class Game:
                 del self.players[player.id]
                 self.players_semaphore.release()
 
-
     async def initiate_player(self, player):
         log.debug("Waiting for player's name")
         await player.get_name()
