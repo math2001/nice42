@@ -1,9 +1,9 @@
 import random
 import net
-from log import getLogger
+from logging import getLogger
 from constants import *
 
-log = getLogger()
+log = getLogger(__name__)
 
 class Player:
 

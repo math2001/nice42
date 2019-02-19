@@ -3,7 +3,7 @@ import net
 import time
 import pygame
 import pygame.freetype
-from log import getLogger
+from logging import getLogger
 from pygame.locals import *
 from constants import *
 from client.scene import Scene

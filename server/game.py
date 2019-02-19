@@ -3,13 +3,13 @@ import time
 import random
 import net
 from server.player import Player
-from log import getLogger
+from logging import getLogger
 from itertools import count
 from collections import deque
 from constants import *
 from server.constants import *
 
-log = getLogger('DEBUG')
+log = getLogger(__name__)
 
 class Game:
 

@@ -1,10 +1,10 @@
 import trio
 import json
 from collections import deque
-from log import getLogger
+from logging import getLogger
 from constants import *
 
-log = getLogger()
+log = getLogger(__name__)
 
 # TODO: test that! it should be easy and fun with trio
 

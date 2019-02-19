@@ -3,13 +3,13 @@ import net
 import time
 import pygame
 import pygame.freetype
-from log import getLogger
+from logging import getLogger
 from pygame.locals import *
 from constants import *
 from client.utils import *
 from client.scene import Scene
 
-log = getLogger()
+log = getLogger(__name__)
 
 def get_keyboard_state():
     key = pygame.key.get_pressed()

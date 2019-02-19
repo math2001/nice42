@@ -5,7 +5,7 @@ import trio
 import pygame
 import pygame.freetype
 from collections import namedtuple
-from log import getLogger
+from logging import getLogger
 from pygame.locals import *
 from constants import *
 from client.utils import *
@@ -16,7 +16,7 @@ from client.username import Username
 
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
-log = getLogger()
+log = getLogger(__name__)
 
 fonts = namedtuple('Fonts', 'mono')(
     pygame.freetype.SysFont("Fira Mono", 12)

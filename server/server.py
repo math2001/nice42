@@ -1,8 +1,8 @@
 import trio
-from log import getLogger
+from logging import getLogger
 from server.game import Game
 
-log = getLogger()
+log = getLogger(__name__)
 
 async def run():
     log.info("Star server")
