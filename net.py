@@ -6,6 +6,8 @@ from constants import *
 
 log = getLogger()
 
+# TODO: test that! it should be easy and fun with trio
+
 class ConnectionClosed(Exception):
     pass
 
@@ -13,44 +15,42 @@ class JSONStream:
     """ A wrapper around a trio.Stream """
 
     def __init__(self, stream):
-        self.stream = stream
-        self._reading_deque = deque()
-        # self._read_semaphore = trio.Semaphore(1)
-        # self._write_semaphore = trio.Semaphore(1)
-        self._semaphore = trio.Semaphore(1)
-        # self.stream.aclose = None
+        self._stream = stream
+
+        self._write_semaphore = trio.Semaphore(1)
+
+        # blocks reading from stream and _read_buf at the same time
+        self._read_semaphore = trio.Semaphore(1)
+
+        self._read_buf = bytearray()
 
     async def read(self):
-        if len(self._reading_deque) == 0:
-            log.debug("Acquiring reading semaphore")
-            await self._semaphore.acquire()
-            log.debug("Reading...")
+        i = self._read_buf.find(b'\n')
+        if i == -1:
+            log.debug("Aquire reading semaphore")
+            await self._read_semaphore.acquire()
 
-            try:
-                data = await self.stream.receive_some(BUFSIZE)
-            except trio.BrokenResourceError:
-                raise ConnectionClosed(f"reading from {self.stream}")
-            log.debug(f"(release) Receive: {data!r}")
-            self._semaphore.release()
+            while i == -1:
+                data = await self._stream.receive_some(BUFSIZE)
+                if not data:
+                    raise net.ConnectionClosed("stream closed")
+                self._read_buf += data
+                i = data.find(b'\n')
+            i += len(self._read_buf)
 
-            if not data:
-                raise ConnectionClosed(f"reading from {self.stream}")
+        # we found a line feed!
+        string = str(self._read_buf[:i], encoding='utf-8')
+        self._read_buf[:i] = []
+        self._read_semaphore.release()
+        return json.loads(string)
 
-            for s in str(data, encoding='utf-8').strip().split('\n'):
-                self._reading_deque.append(json.loads(s))
-        else:
-            # make sure that this function is a check point, ie. it doesn't hogg
-            # the run loop
-            log.debug("Reading from the cache")
-            await trio.sleep(0)
-        return self._reading_deque.popleft()
 
     async def write(self, object):
         log.debug("Acquiring writing semaphore")
-        await self._semaphore.acquire()
+        await self._write_semaphore.acquire()
         log.debug(f"Sending {object}")
         try:
-            await self.stream.send_all(bytes(json.dumps(object) + '\n', encoding='utf-8'))
+            await self._stream.send_all(bytes(json.dumps(object) + '\n', encoding='utf-8'))
         except trio.BrokenResourceError:
-            raise ConnectionClosed(f"writing on {self.stream}")
-        self._semaphore.release()
+            raise ConnectionClosed(f"writing on {self._stream}")
+        self._write_semaphore.release()
