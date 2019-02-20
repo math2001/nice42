@@ -1,5 +1,6 @@
+.vscode
 test.py
-test*.py
+test[0-9].py
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

@@ -25,16 +25,21 @@ class JSONStream:
         self._read_buf = bytearray()
 
     async def read(self):
+        await self._read_semaphore.acquire()
+        log.debug(f"Acquired reading semaphore {self._read_semaphore.value}")
         i = self._read_buf.find(b'\n')
         if i == -1:
-            log.debug("Aquire reading semaphore")
-            await self._read_semaphore.acquire()
 
             while i == -1:
-                data = await self._stream.receive_some(BUFSIZE)
+                try:
+                    data = await self._stream.receive_some(BUFSIZE)
+                except trio.BrokenResourceError:
+                    raise ConnectionClosed("stream closed suddenly while reading")
+
                 log.debug(f"Adding to buffer {data!r}")
+
                 if not data:
-                    raise ConnectionClosed("stream closed")
+                    raise ConnectionClosed("stream closed while reading")
                 self._read_buf += data
                 i = data.find(b'\n')
             i += len(self._read_buf)
@@ -45,7 +50,11 @@ class JSONStream:
         self._read_buf[:i] = []
         self._read_semaphore.release()
         log.debug("Release reading semaphore")
-        return json.loads(string)
+        try:
+            return json.loads(string)
+        except ValueError:
+            log.exception(f"Invalid json: {string!r}")
+            raise
 
 
     async def write(self, object):
@@ -55,7 +64,7 @@ class JSONStream:
         try:
             await self._stream.send_all(bytes(json.dumps(object) + '\n', encoding='utf-8'))
         except trio.BrokenResourceError:
-            raise ConnectionClosed(f"writing on {self._stream}")
+            raise ConnectionClosed(f"stream closed while writing")
         self._write_semaphore.release()
 
     async def aclose(self):
@@ -64,3 +73,14 @@ class JSONStream:
         await self._stream.aclose()
         self._write_semaphore.release()
         self._read_semaphore.release()
+
+
+if __name__ == "__main__":
+    log.setLevel(10)
+
+    async def handler(stream):
+        stream = JSONStream(stream)
+        while True:
+            print(await stream.read())
+    print('running')
+    trio.run(trio.serve_tcp, handler, 9043)

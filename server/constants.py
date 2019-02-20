@@ -1,1 +1,1 @@
-REFRESH_RATE = 1 # in seconds
+REFRESH_RATE = .1 # in seconds
