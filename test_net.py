@@ -11,9 +11,10 @@ import logging
 
 logging.basicConfig(level=logging.DEBUG)
 
-basics = st.one_of(st.integers(), st.floats(), st.text(), st.booleans())
+keys = st.one_of(st.text(min_size=1))
+values = st.one_of(st.integers(), st.floats(), st.text(min_size=1), st.booleans())
 
-serializable = st.dictionaries(basics, basics, max_size=20)
+serializable = st.dictionaries(keys, values, max_size=20)
 
 async def _send_string_by_chunks(stream, string, *, chunk_len=10):
     # length of chunks
@@ -28,13 +29,12 @@ async def _send_string_by_chunks(stream, string, *, chunk_len=10):
 
 async def _assert_reading(stream, objects):
     i = 0
-    with trio.move_on_after(1) as cancel_scope:
+    with trio.move_on_after(2) as cancel_scope:
         while i < len(objects):
             assert await stream.read() == objects[i]
             i += 1
 
-    if cancel_scope.cancelled_caught:
-        assert False
+    assert cancel_scope.cancelled_caught is False
 
 @given(st.lists(serializable, max_size=20))
 async def test_read_chuncky_connection(objects):

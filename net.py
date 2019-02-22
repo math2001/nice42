@@ -1,10 +1,10 @@
 import trio
 import json
 from collections import deque
-from logging import getLogger
+import logging
 from constants import *
 
-log = getLogger(__name__)
+log = logging.getLogger(__name__)
 
 # TODO: test that! it should be easy and fun with trio
 
@@ -26,36 +26,37 @@ class JSONStream:
 
     async def read(self):
         await self._read_semaphore.acquire()
-        log.debug(f"Acquired reading semaphore {self._read_semaphore.value}")
+        log.debug(f"Acquired reading semaphore")
         i = self._read_buf.find(b'\n')
-        if i == -1:
+        while i == -1:
+            try:
+                data = await self._stream.receive_some(BUFSIZE)
+            except trio.BrokenResourceError:
+                raise ConnectionClosed("stream closed suddenly while reading")
 
-            while i == -1:
-                try:
-                    data = await self._stream.receive_some(BUFSIZE)
-                except trio.BrokenResourceError:
-                    raise ConnectionClosed("stream closed suddenly while reading")
+            if not data:
+                raise ConnectionClosed("stream closed while reading")
 
-                log.debug(f"Adding to buffer {data!r}")
+            self._read_buf += data
 
-                if not data:
-                    raise ConnectionClosed("stream closed while reading")
-                self._read_buf += data
-                i = data.find(b'\n')
-            i += len(self._read_buf)
+            i = self._read_buf.find(b'\n') + 1
+            log.debug(f"Adding to buffer {data}")
 
-        # we found a line feed!
-        string = str(self._read_buf[:i], encoding='utf-8')
-        log.debug(f"Read line {string!r}")
+        line = str(self._read_buf[:i], encoding='utf-8')
         self._read_buf[:i] = []
         self._read_semaphore.release()
-        log.debug("Release reading semaphore")
-        try:
-            return json.loads(string)
-        except ValueError:
-            log.exception(f"Invalid json: {string!r}")
-            raise
+        log.debug(f"Parsing line: {line!r}")
 
+        if line.strip() == "":
+            raise ValueError(f"Invalid empty value: {line!r}")
+
+        try:
+            obj = json.loads(line)
+        except ValueError:
+            log.exception(f"Invalid json: {line!r}")
+            raise
+        log.debug(f"Returning {obj!r}")
+        return obj
 
     async def write(self, object):
         log.debug("Acquiring writing semaphore")
@@ -74,13 +75,17 @@ class JSONStream:
         self._write_semaphore.release()
         self._read_semaphore.release()
 
-
 if __name__ == "__main__":
-    log.setLevel(10)
+    logging.basicConfig(
+        format='%(asctime)s %(levelname)-8s %(name)-15s %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        level=logging.DEBUG
+    )
+    log.setLevel(logging.DEBUG)
 
     async def handler(stream):
         stream = JSONStream(stream)
         while True:
             print(await stream.read())
-    print('running')
+    log.info("running")
     trio.run(trio.serve_tcp, handler, 9043)
