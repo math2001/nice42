@@ -1,0 +1,4 @@
+1. implement animations
+2. display username on screen
+	- check for same usernames
+3. handle server close on client

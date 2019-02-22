@@ -23,7 +23,6 @@ class Player:
         self.weak_side = random.randint(0, 3)
 
         self.dead = False
-        self.speed = 2
         self.keyboard_state = 0
 
     async def get_name(self):
@@ -76,16 +75,16 @@ class Player:
         })
         self.dead = True
 
-    def move(self):
+    def move(self, loop_time):
         """ Move according to the keyboard state """
         if self.keyboard_state & LEFT:
-            self.pos[0] -= 1
+            self.pos[0] -= PLAYER_SPEED * loop_time
         if self.keyboard_state & RIGHT:
-            self.pos[0] += 1
+            self.pos[0] += PLAYER_SPEED * loop_time
         if self.keyboard_state & UP:
-            self.pos[1] -= 1
+            self.pos[1] -= PLAYER_SPEED * loop_time
         if self.keyboard_state & DOWN:
-            self.pos[1] += 1
+            self.pos[1] += PLAYER_SPEED * loop_time
 
     @property
     def is_on_map(self):

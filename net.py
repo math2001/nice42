@@ -131,9 +131,6 @@ class TimedStream(JSONStream):
         obj[TIME_KEY] = time.time()
         return await super().write(obj)
 
-
-
-
 if __name__ == "__main__":
     logging.basicConfig(
         format='%(asctime)s %(levelname)-8s %(name)-15s %(message)s',

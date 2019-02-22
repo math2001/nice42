@@ -37,7 +37,8 @@ class Game:
         while True:
             await self.players_semaphore.acquire()
             for player in self.players.values():
-                player.move()
+                # gives how long the last loop took, to move accordingly
+                player.move(self.loops_times[-1])
 
                 # check collision
                 for target in self.players.values():
