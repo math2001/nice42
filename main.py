@@ -23,6 +23,9 @@ def main():
     elif sys.argv[1] == 'client':
         import client
         trio.run(client.run)
+    else:
+        print(f"Invalid command {sys.argv[1]}")
+        exit(1)
 
 try:
     main()
