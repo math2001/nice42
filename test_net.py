@@ -54,3 +54,17 @@ async def test_read_chuncky_connection(objects):
             n.start_soon(_send_string_by_chunks, stream_controlled, string)
             n.start_soon(_assert_reading, stream_tested, objects)
     assert cancel_scope.cancelled_caught is False
+
+
+@given(st.lists(serializable, max_size=10))
+async def test_multiple_message(objects):
+    """ Make sure that JSON stream can read multiple objects in one read """
+    with trio.move_on_after(1) as cancel_scope:
+        a, stream_controlled = trio.testing.memory_stream_pair()
+        stream_tested = net.JSONStream(a)
+        string = '\n'.join(json.dumps(obj) for obj in objects) + '\n'
+        async with trio.open_nursery() as n:
+            n.start_soon(_assert_reading, stream_tested, objects)
+            n.start_soon(stream_controlled.send_all, bytes(string, encoding='utf-8'))
+
+    assert cancel_scope.cancelled_caught is False
