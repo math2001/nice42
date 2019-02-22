@@ -7,9 +7,8 @@ log = getLogger(__name__)
 
 class Player:
 
-    def __init__(self, id, stream):
-        self.id = id
-        self.name = None
+    def __init__(self, stream):
+        self.username = None
         self.stream = stream
         self.pos = None
 
@@ -22,10 +21,9 @@ class Player:
         # 0 top, 1 right, 2 bottom and 3 is left
         self.weak_side = random.randint(0, 3)
 
-        self.dead = False
         self.keyboard_state = 0
 
-    async def get_name(self):
+    async def get_username(self):
         resp = await self.stream.read()
 
         if resp['type'] != 'username':
@@ -34,8 +32,8 @@ class Player:
         if 'username' not in resp:
             raise ValueError(f"invalid response: 'username' key should be set in {resp}")
 
-        self.name = resp['username']
-        log.info(f"Player got name: {self.name}")
+        self.username = resp['username']
+        log.info(f"Player got username: {self.username}")
 
     def spawn(self, pos):
         if self.is_on_map:
@@ -73,7 +71,6 @@ class Player:
         await self.stream.write({
             "type": "dead"
         })
-        self.dead = True
 
     def move(self, loop_time):
         """ Move according to the keyboard state """
@@ -98,7 +95,7 @@ class Player:
         }
 
     def __str__(self):
-        return f"<Player {self.name!r} {self.color}>"
+        return f"<s.Player {self.username!r} {self.color}>"
 
     def __repr__(self):
         return str(self)

@@ -3,11 +3,13 @@ import net
 import time
 import pygame
 import pygame.freetype
+import lockables
 from logging import getLogger
 from pygame.locals import *
 from constants import *
 from client.utils import *
 from client.scene import Scene
+from client.player import Player
 
 log = getLogger(__name__)
 
@@ -40,10 +42,12 @@ class Game(Scene):
     def __init__(self, nursery):
         self.nursery = nursery
         self.keyboard_state = 0
-        sendch, self.getch = trio.open_memory_channel(0)
+        sendch, self.update_getch = trio.open_memory_channel(0)
         self.nursery.start_soon(fetch_updates_forever, Scene.stream, sendch)
 
         self.game_state = None
+
+        self.players = lockables.Dict()
 
     def debug_string(self):
         lps = None
@@ -59,12 +63,22 @@ class Game(Scene):
                 "type": "keyboard",
                 "state": self.keyboard_state
             })
-        if self.getch.statistics().tasks_waiting_send > 0:
-            self.game_state = await self.getch.receive()
+        try:
+            update = self.update_getch.receive_nowait()
+        except trio.WouldBlock:
+            pass
+        else:
+            # TODO: this might be suitable for micro optimisation?
+            for username, state in update['players'].items():
+                (await self.players.get(username)).update_state(state['pos'])
+
+            for username, state in update['new'].items():
+                await self.players.set(username, Player(username, state['pos'],
+                                                        state['color']))
 
     def render(self):
         if not self.game_state:
             return
-        for player in self.game_state['players']:
+        for player in self.players:
             rect = pygame.Rect(player['pos'], PLAYER_SIZE)
             pygame.draw.rect(Screen.surface, player['color'], rect)

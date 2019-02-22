@@ -4,8 +4,8 @@ import net
 import trio
 import pygame
 import pygame.freetype
+import logging
 from collections import namedtuple
-from logging import getLogger
 from pygame.locals import *
 from constants import *
 from client.utils import *
@@ -16,7 +16,8 @@ from client.username import Username
 
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
-log = getLogger(__name__)
+log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
 
 fonts = namedtuple('Fonts', 'mono')(
     pygame.freetype.SysFont("Fira Mono", 12)
@@ -70,7 +71,7 @@ class App:
             # start the scene nursery
             async with trio.open_nursery() as snursery:
                 self.scene = self.scenes[new](snursery)
-                cancel_scope = trio.move_on_after(10)
+                cancel_scope = trio.move_on_after(2)
                 with cancel_scope:
                     await self.scene.init()
                 if cancel_scope.cancelled_caught:
@@ -80,7 +81,7 @@ class App:
                 while new is None:
                     for event in pygame.event.get():
                         if event.type == QUIT:
-                            return await self._exit()
+                            return await self._close_scene()
 
                         caught = self.scene.handle_event(event)
                         if not caught and event.type == KEYDOWN and event.key == K_BACKSPACE:
@@ -88,7 +89,7 @@ class App:
 
                     new = await self.scene.update()
                     if new is False:
-                        return await self._exit()
+                        return await self._close_scene()
 
                     Screen.surface.fill(BLACK)
                     await self.scene.update()
@@ -99,16 +100,22 @@ class App:
                     pygame.display.flip()
                     await trio.sleep(0)
 
-    async def _exit(self):
-        if hasattr(Scene, 'stream'):
-            await Scene.stream.aclose()
-        # TODO: I shouldn't have to do this. What are the tasks that are still
-        # running?
-        Scene.nursery.cancel_scope.cancel()
+    async def _close_scene(self):
+        log.debug("Closing current scene")
+        await self.scene.aclose()
+        log.debug("Scene closed")
 
     async def run(self):
         await self.mainloop()
-        await self._exit()
+        log.debug("Main loop finished, exiting")
+
+        if hasattr(Scene, 'stream'):
+            log.debug("Closing main stream...")
+            await Scene.stream.aclose()
+            log.debug("Stream closed")
+        # TODO: I shouldn't have to do this. What are the tasks that are still
+        # running?
+        Scene.nursery.cancel_scope.cancel()
     
 async def run():
     pygame.init()

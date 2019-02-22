@@ -6,7 +6,7 @@ import logging
 from constants import *
 
 log = logging.getLogger(__name__)
-log.setLevel(logging.INFO)
+log.setLevel(logging.DEBUG)
 
 
 # the key used to store timestamps to invalidate packets
@@ -33,28 +33,28 @@ class JSONStream:
         self._read_buf = bytearray()
 
     async def read(self):
-        await self._read_semaphore.acquire()
-        log.debug(f"Acquired reading semaphore")
-        i = self._read_buf.find(b'\n')
-        while i == -1:
-            try:
-                data = await self._stream.receive_some(BUFSIZE)
-            except trio.BrokenResourceError:
-                raise ConnectionClosed("stream closed suddenly while reading")
-
-            if not data:
-                raise ConnectionClosed("stream closed while reading")
-
-            self._read_buf += data
-
+        async with self._read_semaphore:
+            log.debug(f"Acquired reading semaphore")
             i = self._read_buf.find(b'\n')
-            log.debug(f"Adding to buffer {data}")
+            while i == -1:
+                try:
+                    data = await self._stream.receive_some(BUFSIZE)
+                except trio.BrokenResourceError:
+                    raise ConnectionClosed("stream closed suddenly while reading")
 
-        i += 1
+                if not data:
+                    raise ConnectionClosed("stream closed while reading")
 
-        line = str(self._read_buf[:i], encoding='utf-8')
-        self._read_buf[:i] = []
-        self._read_semaphore.release()
+                self._read_buf += data
+
+                i = self._read_buf.find(b'\n')
+                log.debug(f"Adding to buffer {data}")
+
+            i += 1
+
+            line = str(self._read_buf[:i], encoding='utf-8')
+            self._read_buf[:i] = []
+
         log.debug(f"(release read semaphore) Parsing line: {line!r}")
 
         if line.strip() == "":
@@ -69,12 +69,11 @@ class JSONStream:
         if not isinstance(obj, dict):
             raise ValueError(f"should be dict, got {type(obj)} in {obj}")
 
-
-        log.debug(f"Returning {obj!r}")
+        log.info(f"Read {obj!r}")
         return obj
 
     async def write(self, obj):
-        log.debug("Acquiring writing semaphore")
+        log.info(f"Sending {obj}")
         if not isinstance(obj, dict):
             raise ValueError(f"should send dict, got {obj!r}")
 
@@ -89,9 +88,19 @@ class JSONStream:
         log.debug("Release writing semaphore")
 
     async def aclose(self):
-        await self._write_semaphore.acquire()
-        await self._read_semaphore.acquire()
+        log.info(f"Closing stream {self}")
+        with trio.move_on_after(1) as cancel_scope:
+            await self._write_semaphore.acquire()
+            log.debug("Got write semaphore")
+            await self._read_semaphore.acquire()
+            log.debug("Got read semaphore")
+
+        if cancel_scope.cancelled_caught:
+            log.warning("Forcefully closing stream after 1 second, "
+                        "semaphore weren't acquired")
+
         await self._stream.aclose()
+        log.debug('closed, releasing semaphores')
         self._write_semaphore.release()
         self._read_semaphore.release()
 

@@ -4,7 +4,6 @@ import random
 import net
 from server.player import Player
 from logging import getLogger
-from itertools import count
 from collections import deque
 from constants import *
 from server.constants import *
@@ -17,8 +16,6 @@ class Game:
         self.players = {}
         self.players_semaphore = trio.Semaphore(1)
 
-        self.player_counter = count()
-
         self.loops_times = deque([], maxlen=10)
         self.lps = 0
 
@@ -28,6 +25,8 @@ class Game:
 
         self.nursery.start_soon(trio.serve_tcp, self.accept_players, PORT)
         nursery.start_soon(self.gameloop)
+
+        self.new_player_sendch, self.new_player_getch = trio.open_memory_channel(0)
 
     async def gameloop(self):
         """ The game loop that checks collisions and stuff """
@@ -66,36 +65,31 @@ class Game:
         they are ready for the game loop """
         log.info("New connection")
 
-        player = Player(next(self.player_counter), net.JSONStream(stream))
+        player = Player(net.JSONStream(stream))
 
         try:
-            await self.initiate_player(player)
+            log.debug("Waiting for player name")
+            await player.get_username()
         except net.ConnectionClosed:
             log.info(f"{player} connection closed")
         except Exception as e:
             log.exception("Initiater crashed")
         else:
-            await self.players_semaphore.acquire()
-            self.players[player.id] = player
-            self.players_semaphore.release()
+            log.info(f"Add {player} to players dict")
+            player.spawn((
+                random.randint(0, MAP_SIZE[0] - PLAYER_SIZE[0]),
+                random.randint(0, MAP_SIZE[1] - PLAYER_SIZE[1]),
+            ))
+
+            await self.new_player_sendch.send(player)
 
             try:
                 await player.get_user_input_forever()
             except net.ConnectionClosed:
                 log.info(f"{player} connection closed")
-                await player.killed()
                 await self.players_semaphore.acquire()
-                del self.players[player.id]
+                del self.players[player.username]
                 self.players_semaphore.release()
-
-    async def initiate_player(self, player):
-        log.debug("Waiting for player's name")
-        await player.get_name()
-        player.spawn((
-            random.randint(0, MAP_SIZE[0] - PLAYER_SIZE[0]),
-            random.randint(0, MAP_SIZE[1] - PLAYER_SIZE[1]),
-        ))
-        log.info(f"{player} added to players dict")
 
     async def send_updates(self):
         """Send updates to the players about the game state
@@ -113,23 +107,38 @@ class Game:
 
         self.last_update = time.time()
 
-        players = [p.serializable for p in self.players.values() if p.is_on_map]
+        players = {
+            p.username: {'pos': p.pos} for p in self.players.values() if p.is_on_map
+        }
 
-        # async with trio.open_nursery() as nursery:
-        #     for player in self.players.values():
-        #         # should I make wrapper as player.write that would do
-        #         # player.stream.write?
-        #         nursery.start_soon(player.stream.write, {
-        #             'type': 'update',
-        #             'players': players,
-        #             'lps': self.lps,
-        #         })
+        new_players = {}
+        has_new_players = True
+        while has_new_players:
+            try:
+                new = self.new_player_getch.receive_nowait()
+            except trio.WouldBlock: # queue is empty
+                has_new_players = False
+            else:
+                new_players[new.username] = {
+                    'pos': new.pos,
+                    'color': new.color,
+                }
 
+                await self.players_semaphore.acquire()
+                self.players[player.username] = player
+                self.players_semaphore.release()
+
+        # don't add 'new' key if new == []?
+        obj = {
+            'type': 'update',
+            'players': players,
+            'new': new_players,
+            'lps': self.lps
+        }
+
+        # put this in a nursery to .start_soon instead of await?
+        # how long can a .write hang for?
         for player in self.players.values():
             # should I make wrapper as player.write that would do
             # player.stream.write?
-            await player.stream.write({
-                'type': 'update',
-                'players': players,
-                'lps': self.lps,
-            })
+            await player.stream.write(obj)

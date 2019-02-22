@@ -19,9 +19,7 @@ class Scene:
   
     def handle_event(self, e):
         """ *pygame* event"""
-        if e.type == pygame.QUIT:
-            EventManager.emit("quit")
-    
+           
     def render(self):
         raise ValueError("No renderer for scene {}".format(self.__class__.__name__))
     
@@ -30,3 +28,12 @@ class Scene:
 
     def debug_string(self):
         return ''
+
+    def __str__(self):
+        return f"<Scene {self.__class__.__name__!r}>"
+
+    def __repr__(self):
+        return str(self)
+
+    async def aclose(self):
+        self.nursery.cancel_scope.cancel()
