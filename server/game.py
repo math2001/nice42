@@ -109,7 +109,6 @@ class Game:
 
         if time.time() - self.last_update < REFRESH_RATE:
             return
-        log.debug(f"Send updates to {len(self.players)} clients")
 
         self.last_update = time.time()
 
