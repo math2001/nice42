@@ -39,8 +39,10 @@ class JSONStream:
 
             self._read_buf += data
 
-            i = self._read_buf.find(b'\n') + 1
+            i = self._read_buf.find(b'\n')
             log.debug(f"Adding to buffer {data}")
+
+        i += 1
 
         line = str(self._read_buf[:i], encoding='utf-8')
         self._read_buf[:i] = []
