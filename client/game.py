@@ -45,15 +45,15 @@ class Game(Scene):
         sendch, self.update_getch = trio.open_memory_channel(0)
         self.nursery.start_soon(fetch_updates_forever, Scene.stream, sendch)
 
-        self.game_state = None
-
         self.players = lockables.Dict()
 
-    def debug_string(self):
-        lps = None
-        if self.game_state:
-            lps = self.game_state['lps']
-        return f"lps: {lps}"
+        self.game_state = lockables.Dict()
+
+    async def init(self):
+        await self.game_state.set('lps', None)
+
+    async def debug_string(self):
+        return f"lps: {await self.game_state.get('lps')}"
 
     async def update(self):
         new = get_keyboard_state()
@@ -68,17 +68,16 @@ class Game(Scene):
         except trio.WouldBlock:
             pass
         else:
+            await self.game_state.set('lps', update['lps'])
             # TODO: this might be suitable for micro optimisation?
             for username, state in update['players'].items():
                 (await self.players.get(username)).update_state(state['pos'])
 
             for username, state in update['new'].items():
-                await self.players.set(username, Player(username, state['pos'],
-                                                        state['color']))
+                p = Player(username, state['pos'], state['color'])
+                await self.players.set(username, p)
+                log.info(f"Add new player {p}")
 
-    def render(self):
-        if not self.game_state:
-            return
-        for player in self.players:
-            rect = pygame.Rect(player['pos'], PLAYER_SIZE)
-            pygame.draw.rect(Screen.surface, player['color'], rect)
+    async def render(self):
+        async for player in self.players.values():
+            player.render()

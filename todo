@@ -4,6 +4,8 @@
 	- check for same usernames
 3. handle server close on client
 
+100. change log level from the game
+
 feedback for trio:
 	- trio.open_memory_channel should maybe be boundable to a nursery or something
 

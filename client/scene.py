@@ -20,13 +20,13 @@ class Scene:
     def handle_event(self, e):
         """ *pygame* event"""
            
-    def render(self):
+    async def render(self):
         raise ValueError("No renderer for scene {}".format(self.__class__.__name__))
     
     async def update(self):
         pass
 
-    def debug_string(self):
+    async def debug_string(self):
         return ''
 
     def __str__(self):

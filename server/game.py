@@ -1,14 +1,15 @@
+import logging
 import trio
 import time
 import random
 import net
 from server.player import Player
-from logging import getLogger
 from collections import deque
 from constants import *
 from server.constants import *
 
-log = getLogger(__name__)
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
 
 class Game:
 
@@ -24,7 +25,7 @@ class Game:
         self.nursery = nursery
 
         self.nursery.start_soon(trio.serve_tcp, self.accept_players, PORT)
-        nursery.start_soon(self.gameloop)
+        self.nursery.start_soon(self.gameloop)
 
         self.new_player_sendch, self.new_player_getch = trio.open_memory_channel(0)
 
@@ -34,26 +35,22 @@ class Game:
 
         last = time.time()
         while True:
-            await self.players_semaphore.acquire()
-            for player in self.players.values():
-                # gives how long the last loop took, to move accordingly
-                player.move(self.loops_times[-1])
+            async with self.players_semaphore:
+                for player in self.players.values():
+                    # gives how long the last loop took, to move accordingly
+                    player.move(self.loops_times[-1])
 
-                # check collision
-                for target in self.players.values():
-                    if target is player:
-                        continue
-                    if player.collides(target):
-                        if random.randint(0, 1) == 0:
-                            self.player_dead(player)
-                        else:
-                            self.player_dead(target)
+                    # check collision
+                    for target in self.players.values():
+                        if target is player:
+                            continue
+                        if player.collides(target):
+                            if random.randint(0, 1) == 0:
+                                self.player_dead(player)
+                            else:
+                                self.player_dead(target)
 
-            # should I release players_semaphore to relock again in the function
-            # or keep it this way? is it that expensive to lock/unlock
             await self.send_updates()
-
-            self.players_semaphore.release()
 
             await trio.sleep(.01)
             self.loops_times.append(time.time() - last)
@@ -87,9 +84,8 @@ class Game:
                 await player.get_user_input_forever()
             except net.ConnectionClosed:
                 log.info(f"{player} connection closed")
-                await self.players_semaphore.acquire()
-                del self.players[player.username]
-                self.players_semaphore.release()
+                async with self.players_semaphore:
+                    del self.players[player.username]
 
     async def send_updates(self):
         """Send updates to the players about the game state
@@ -103,7 +99,7 @@ class Game:
         # TODO: optimise communication (stateful)
 
         if time.time() - self.last_update < REFRESH_RATE:
-            return
+            return await trio.sleep(0) # guaranty that this function is checkpoint
 
         self.last_update = time.time()
 
@@ -124,9 +120,8 @@ class Game:
                     'color': new.color,
                 }
 
-                await self.players_semaphore.acquire()
-                self.players[player.username] = player
-                self.players_semaphore.release()
+                async with self.players_semaphore:
+                    self.players[new.username] = new
 
         # don't add 'new' key if new == []?
         obj = {
@@ -135,6 +130,8 @@ class Game:
             'new': new_players,
             'lps': self.lps
         }
+
+        log.debug(f"Sending to {len(self.players)} players: {obj}")
 
         # put this in a nursery to .start_soon instead of await?
         # how long can a .write hang for?

@@ -17,5 +17,5 @@ class Username(Scene):
     async def update(self):
         return 'game'
 
-    def render(self):
+    async def render(self):
         pass

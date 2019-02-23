@@ -49,9 +49,9 @@ class App:
         self.window = pygame.display.set_mode(*args, **kwargs)
         Screen.update()
 
-    def show_debug_infos(self):
-        text = f"{self.scene.debug_string()} " \
-               f"{classname(self.scene)} " \
+    async def show_debug_infos(self):
+        text = f"{await self.scene.debug_string()} " \
+               f"{self.scene} " \
                f"{round(self.clock.get_fps()):2} fps"
         rect = fonts.mono.get_rect(text)
         rect.bottomright = Screen.rect.bottomright
@@ -93,9 +93,9 @@ class App:
 
                     Screen.surface.fill(BLACK)
                     await self.scene.update()
-                    self.scene.render()
+                    await self.scene.render()
                     if self.debug:
-                        self.show_debug_infos()
+                        await self.show_debug_infos()
                     self.clock.tick(self.max_fps)
                     pygame.display.flip()
                     await trio.sleep(0)

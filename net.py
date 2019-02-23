@@ -6,7 +6,7 @@ import logging
 from constants import *
 
 log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.WARNING)
 
 
 # the key used to store timestamps to invalidate packets
@@ -100,7 +100,7 @@ class JSONStream:
                         "semaphore weren't acquired")
 
         await self._stream.aclose()
-        log.debug('closed, releasing semaphores')
+        log.debug('Stream closed, releasing semaphores')
         self._write_semaphore.release()
         self._read_semaphore.release()
 
