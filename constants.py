@@ -10,3 +10,4 @@ DOWN = 1 << 2
 LEFT = 1 << 3
 
 PLAYER_SPEED = 150 # pixels per second
+SERVER_REFRESH_RATE = .1 # in seconds

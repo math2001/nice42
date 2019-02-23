@@ -6,7 +6,6 @@ import net
 from server.player import Player
 from collections import deque
 from constants import *
-from server.constants import *
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -91,14 +90,14 @@ class Game:
         """Send updates to the players about the game state
 
         Unfortunartely, we can't send data for every frame. Therefore, we only
-        send out every REFRESH_RATE second.
+        send out every SERVER_REFRESH_RATE second.
         """
 
         # note that this assumes that self.players_semaphore is acquired
 
         # TODO: optimise communication (stateful)
 
-        if time.time() - self.last_update < REFRESH_RATE:
+        if time.time() - self.last_update < SERVER_REFRESH_RATE:
             return await trio.sleep(0) # guaranty that this function is checkpoint
 
         self.last_update = time.time()

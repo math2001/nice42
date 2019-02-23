@@ -9,8 +9,17 @@ PINK = pygame.Color('pink')
 RED = pygame.Color('red')
 BLUE = pygame.Color('blue')
 
-def abs(n):
+def mod(n):
+    """ Return the magnitude of a number """
     return n if n >= 0 else -n
+
+def arg(n):
+    """ Return the direction of a number """
+    if n > 0:
+        return 1
+    elif n < 0:
+        return -1
+    return 0
 
 @contextmanager
 def fontedit(font, **kwargs):

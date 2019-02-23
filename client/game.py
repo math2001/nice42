@@ -47,10 +47,7 @@ class Game(Scene):
 
         self.players = lockables.Dict()
 
-        self.game_state = lockables.Dict()
-
-    async def init(self):
-        await self.game_state.set('lps', None)
+        self.game_state = lockables.Dict(lps=None)
 
     async def debug_string(self):
         return f"lps: {await self.game_state.get('lps')}"
@@ -63,11 +60,15 @@ class Game(Scene):
                 "type": "keyboard",
                 "state": self.keyboard_state
             })
+
         try:
             update = self.update_getch.receive_nowait()
         except trio.WouldBlock:
-            pass
+            # guess what should be happening
+            async for player in self.players.values():
+                player.update()
         else:
+            # update state from server
             await self.game_state.set('lps', update['lps'])
             # TODO: this might be suitable for micro optimisation?
             for username, state in update['players'].items():

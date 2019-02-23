@@ -7,6 +7,7 @@ import pygame.freetype
 import logging
 from collections import namedtuple
 from pygame.locals import *
+import lockables
 from constants import *
 from client.utils import *
 
@@ -23,16 +24,15 @@ fonts = namedtuple('Fonts', 'mono')(
     pygame.freetype.SysFont("Fira Mono", 12)
 )
 
+
+MAX_FPS = 60
+
 class App:
 
     def __init__(self):
         EventManager.on("set mode", self.set_mode)
 
-        self.going = True
-        self.clock = pygame.time.Clock()
-        self.max_fps = 60
         self.scene = None
-        self.debug = True
 
         self.scenes = {
             'game': Game,
@@ -45,14 +45,20 @@ class App:
 
         pygame.display.set_caption('Nine42')
 
+        # TODO: use lockables.Value. FPS and debug have nothing to do with each
+        # other, they should be able to be changed at the same time (a dict
+        # prevents that)
+        self.app_state = lockables.Dict(fps=0, debug=True)
+
     def set_mode(self, *args, **kwargs):
         self.window = pygame.display.set_mode(*args, **kwargs)
         Screen.update()
 
     async def show_debug_infos(self):
+        # TODO: maybe move this out of the game loop?
         text = f"{await self.scene.debug_string()} " \
                f"{self.scene} " \
-               f"{round(self.clock.get_fps()):2} fps"
+               f"{round(await self.app_state.get('fps')):2} fps"
         rect = fonts.mono.get_rect(text)
         rect.bottomright = Screen.rect.bottomright
         fonts.mono.render_to(Screen.surface, rect, text, fgcolor=WHITE,
@@ -64,7 +70,9 @@ class App:
         
         new = 'username'
 
-        while self.going:
+        clock = pygame.time.Clock()
+
+        while True:
 
             log.info(f"Switch scene {new!r}")
 
@@ -85,7 +93,8 @@ class App:
 
                         caught = self.scene.handle_event(event)
                         if not caught and event.type == KEYDOWN and event.key == K_BACKSPACE:
-                            self.debug = not self.debug
+                            await self.app_state.set('debug',
+                                not await self.app_state.get('debug'))
 
                     new = await self.scene.update()
                     if new is False:
@@ -94,9 +103,10 @@ class App:
                     Screen.surface.fill(BLACK)
                     await self.scene.update()
                     await self.scene.render()
-                    if self.debug:
+                    if await self.app_state.get('debug'):
                         await self.show_debug_infos()
-                    self.clock.tick(self.max_fps)
+                    clock.tick(MAX_FPS)
+                    await self.app_state.set('fps', clock.get_fps())
                     pygame.display.flip()
                     await trio.sleep(0)
 
