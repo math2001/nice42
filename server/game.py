@@ -3,6 +3,7 @@ import trio
 import time
 import random
 import net
+import lockables
 from server.player import Player
 from collections import deque
 from constants import *
@@ -13,9 +14,7 @@ log.setLevel(logging.DEBUG)
 class Game:
 
     def __init__(self, nursery):
-        # TODO: use lockable!!!!
-        self.players = {}
-        self.players_semaphore = trio.Semaphore(1)
+        self.players = lockables.Lockable({})
 
         self.loops_times = deque([], maxlen=10)
         self.lps = 0
@@ -35,13 +34,13 @@ class Game:
 
         last = time.time()
         while True:
-            async with self.players_semaphore:
-                for player in self.players.values():
+            async with self.players.cap_lim:
+                for player in self.players.value.values():
                     # gives how long the last loop took, to move accordingly
                     player.move(self.loops_times[-1])
 
                     # check collision
-                    for target in self.players.values():
+                    for target in self.players.value.values():
                         if target is player:
                             continue
                         if player.collides(target):
@@ -52,6 +51,7 @@ class Game:
 
             await self.send_updates()
 
+            # TODO: adjust time based on performances
             await trio.sleep(.01)
             self.loops_times.append(time.time() - last)
             last = time.time()
@@ -81,8 +81,8 @@ class Game:
             random.randint(0, MAP_SIZE[1] - PLAYER_SIZE[1]),
         ))
 
-        async with self.players_semaphore:
-            if player.username in self.players:
+        async with self.players.cap_lim:
+            if player.username in self.players.value:
                 log.warning(f"Duplicate username: {player.username!r}")
                 await player.stream.write({'type': 'close',
                                            'message': "used username"})
@@ -95,7 +95,7 @@ class Game:
                 'type': 'init game',
                 'players': [],
                 'new_players': {p.username: p.state_for_initialization() \
-                                for p in self.players.values() if p.is_on_map}
+                                for p in self.players.value.values() if p.is_on_map}
             })
 
         log.info(f"Add new player {player}")
@@ -105,8 +105,8 @@ class Game:
             await player.get_user_input_forever()
         except net.ConnectionClosed:
             log.info(f"{player} connection closed")
-            async with self.players_semaphore:
-                del self.players[player.username]
+            async with self.players.cap_lim:
+                del self.players.value[player.username]
 
     async def send_updates(self):
         """Send updates to the players about the game state
@@ -114,8 +114,6 @@ class Game:
         Unfortunartely, we can't send data for every frame. Therefore, we only
         send out every SERVER_REFRESH_RATE second.
         """
-
-        # note that this assumes that self.players_semaphore is acquired
 
         # TODO: optimise communication (stateful)
 
@@ -142,11 +140,11 @@ class Game:
 
         # don't add 'new' key if new == []? Bad for consistency, better for
         # network perfs
-        async with self.players_semaphore:
+        async with self.players.cap_lim:
             obj = {
                 'type': 'update',
                 'players': {p.username: p.state_for_update() \
-                            for p in self.players.values() if p.is_on_map},
+                            for p in self.players.value.values() if p.is_on_map},
                 'new_players': {p.username: p.state_for_initialization() \
                                 for p in new_players.values()},
                 'lps': self.lps
@@ -154,14 +152,14 @@ class Game:
 
             # add new players to the player dict
             for username, player in new_players.items():
-                self.players[username] = player
+                self.players.value[username] = player
 
             # send update message to every player
-            log.debug(f"Sending to {len(self.players)} players: {obj}")
+            log.debug(f"Sending to {len(self.players.value)} players: {obj}")
 
             # put this in a nursery to .start_soon instead of await?
             # how long can a .write hang for?
-            for player in self.players.values():
+            for player in self.players.value.values():
                 # should I make wrapper as player.write that would do
                 # player.stream.write?
                 await player.stream.write(obj)
