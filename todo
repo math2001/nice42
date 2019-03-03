@@ -1,12 +1,14 @@
-1. implement animations
-1.5. log debug level to file, all the time
-2. display username on screen
+- implement animations
+- log debug level to file, all the time
+- display username on screen
 	- check for same usernames
-3. handle server close on client
+- handle server close on client
+- handle player living on server
 
-100. change log level from the game
+- change log level from the game
 
 feedback for trio:
 	- trio.open_memory_channel should maybe be boundable to a nursery or something
+	- show example of the best way to use cap_lim (with block)
 
 how expensive is it to open a nursery in trio?

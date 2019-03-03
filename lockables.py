@@ -5,6 +5,12 @@ only prevent collisions
 
 import trio
 
+class Lockable:
+
+    def __init__(self, value):
+        self.value = value
+        self.cap_lim = trio.CapacityLimiter(1)
+
 class Dict:
 
     def __init__(self, *args, **kwargs):

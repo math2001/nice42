@@ -42,17 +42,40 @@ class Game(Scene):
     def __init__(self, nursery):
         self.nursery = nursery
         self.keyboard_state = 0
-        sendch, self.update_getch = trio.open_memory_channel(0)
-        self.nursery.start_soon(fetch_updates_forever, Scene.stream, sendch)
+        self.update_sendch, self.update_getch = trio.open_memory_channel(0)
 
-        self.players = lockables.Dict()
+        self.players = lockables.Lockable({})
 
-        self.game_state = lockables.Dict(lps=None)
+        self.lps = lockables.Lockable(0)
+
+    async def init(self):
+        log.debug("Waiting for 'init game' message")
+        initstate = await Scene.stream.read()
+        log.info("Got 'init game' message")
+        log.debug(f"state: {initstate}")
+
+        if initstate['type'] != 'init game':
+            raise ValueError(f"Expected type to be 'init game' in {state}")
+
+        async with self.players.cap_lim:
+            for username, player in initstate['new_players'].items():
+                self.players.value[username] = Player(
+                    username=username,
+                    pos=player['pos'],
+                    color=player['color']
+                )
+
+            log.debug(f"Got {len(self.players.value)} new players")
+        log.debug("Start fetching updates from server forever")
+        self.nursery.start_soon(fetch_updates_forever, Scene.stream,
+                                self.update_sendch)
 
     async def debug_string(self):
-        return f"lps: {await self.game_state.get('lps')}"
+        async with self.lps.cap_lim:
+            return f"lps: {self.lps.value}"
 
     async def update(self):
+        """ This function is ran every frame """
         new = get_keyboard_state()
         if new != self.keyboard_state:
             self.keyboard_state = new
@@ -61,24 +84,32 @@ class Game(Scene):
                 "state": self.keyboard_state
             })
 
+        # see if there any fresh updates from the server
         try:
             update = self.update_getch.receive_nowait()
         except trio.WouldBlock:
-            # guess what should be happening
-            async for player in self.players.values():
-                player.update()
+            # no updates available, guess what should be happening
+            async with self.players.cap_lim:
+                for player in self.players.value.values():
+                    player.update()
         else:
             # update state from server
-            await self.game_state.set('lps', update['lps'])
-            # TODO: this might be suitable for micro optimisation?
-            for username, state in update['players'].items():
-                (await self.players.get(username)).update_state(state['pos'])
+            async with self.lps.cap_lim:
+                self.lps.value = update['lps']
 
-            for username, state in update['new'].items():
-                p = Player(username, state['pos'], state['color'])
-                await self.players.set(username, p)
-                log.info(f"Add new player {p}")
+            # TODO: this might be suitable for micro optimisation?
+            # ie. don't block for every write operation, and write all of them
+            # "at once" in a nursery
+            async with self.players.cap_lim:
+                for username, state in update['players'].items():
+                    self.players.value[username].update_state(state['pos'])
+
+                for username, state in update['new_players'].items():
+                    self.players.value[username] = Player(username, state['pos'],
+                                                          state['color'])
+                    log.info(f"Add new player {self.players.value[username]}")
 
     async def render(self):
-        async for player in self.players.values():
-            player.render()
+        async with self.players.cap_lim:
+            for player in self.players.value.values():
+                player.render()

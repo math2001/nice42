@@ -87,8 +87,15 @@ class Player:
     def is_on_map(self):
         return self.pos is not None
 
-    @property
-    def serializable(self):
+    def state_for_initialization(self):
+        """ State information that is send only once """
+        return {
+            "pos": self.pos,
+            "color": self.color
+        }
+
+    def state_for_update(self):
+        """ State information that is send every update """
         return {
             "pos": self.pos,
             "color": self.color
