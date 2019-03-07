@@ -5,6 +5,8 @@ from constants import *
 
 log = getLogger(__name__)
 
+# shouldn't mix async and sync methods!!
+
 class Player:
 
     def __init__(self, stream):

@@ -109,6 +109,8 @@ class App:
                     await self.app_state.set('fps', clock.get_fps())
                     pygame.display.flip()
                     await trio.sleep(0)
+                log.info(f"Switching to new scene: {new}")
+                await self._close_scene()
 
     async def _close_scene(self):
         log.debug("Closing current scene")

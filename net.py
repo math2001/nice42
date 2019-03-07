@@ -25,6 +25,7 @@ class JSONStream:
     def __init__(self, stream):
         self._stream = stream
 
+        # TODO: use lockable!!
         self._write_semaphore = trio.Semaphore(1)
 
         # blocks reading from stream and _read_buf at the same time

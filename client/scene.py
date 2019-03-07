@@ -1,11 +1,9 @@
 """ This is a base class from which every scenes inherits from
 """
 
-# TODO: manage EventManager from the scene, and remove them automatically
-
 import pygame
 import pygame.freetype
-from client.utils import EventManager, Screen
+from client.utils import Screen
 
 pygame.freetype.init()
 

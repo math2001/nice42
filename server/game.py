@@ -45,9 +45,11 @@ class Game:
                             continue
                         if player.collides(target):
                             if random.randint(0, 1) == 0:
-                                self.player_dead(player)
+                                self.nursery.start_soon(self.player_dead,
+                                                        player)
                             else:
-                                self.player_dead(target)
+                                self.nursery.start_soon(self.player_dead,
+                                                        target)
 
             await self.send_updates()
 
@@ -56,6 +58,12 @@ class Game:
             self.loops_times.append(time.time() - last)
             last = time.time()
             self.lps = int(round(sum(self.loops_times) / len(self.loops_times) * 1000))
+
+    async def player_dead(self, player):
+        await player.killed()
+        async with self.players.cap_lim:
+            del self.players.value[player.username]
+
 
     async def accept_players(self, stream):
         """ Accepts players and puts them into self.players once
@@ -114,8 +122,6 @@ class Game:
         Unfortunartely, we can't send data for every frame. Therefore, we only
         send out every SERVER_REFRESH_RATE second.
         """
-
-        # TODO: optimise communication (stateful)
 
         if time.time() - self.last_update < SERVER_REFRESH_RATE:
             # guaranties that this function is always a checkpoint
