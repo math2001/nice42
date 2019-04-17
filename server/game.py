@@ -43,13 +43,14 @@ class Game:
                     for target in self.players.value.values():
                         if target is player:
                             continue
-                        if player.collides(target):
-                            if random.randint(0, 1) == 0:
-                                self.nursery.start_soon(self.player_dead,
-                                                        player)
-                            else:
-                                self.nursery.start_soon(self.player_dead,
-                                                        target)
+
+                        # if player.collides(target):
+                        #     if random.randint(0, 1) == 0:
+                        #         self.nursery.start_soon(self.player_dead,
+                        #                                 player)
+                        #     else:
+                        #         self.nursery.start_soon(self.player_dead,
+                        #                                 target)
 
             await self.send_updates()
 

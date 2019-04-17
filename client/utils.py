@@ -43,38 +43,3 @@ def fontedit(font, **kwargs):
 
 def classname(obj):
     return obj.__class__.__name__
-
-class EventManager:
-
-    events = {}
-
-    @classmethod
-    def on(cls, event, func):
-        cls.events.setdefault(event, []).append(func)
-    
-    @classmethod
-    def emit(cls, event, *args, **kwargs):
-        try:
-            cbs = cls.events[event]
-        except KeyError:
-            warnings.warn(f"Emitting event {event!r} that hasn't got any "
-                          f"listener. Only know about {list(cls.events.keys())}")
-
-        for cb in cbs:
-            cb(*args, **kwargs)
-
-    @classmethod
-    def off(cls, event, func=None):
-        try:
-            funcs = cls.events[event]
-        except KeyError:
-            warnings.warn(f"Removing callback from non-existant event {event!r}")
-        if func is None:
-            del cls.events[event]
-            return
-        try:
-            funcs.remove(func)
-        except ValueError:
-            warning.warn(f"Removing non-existant callback from {event!r}. "
-                         f"({len(funcs)} other callback))")
-
