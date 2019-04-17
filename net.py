@@ -6,7 +6,7 @@ import logging
 from constants import *
 
 log = logging.getLogger(__name__)
-log.setLevel(logging.INFO)
+log.setLevel(logging.WARNING)
 
 
 # the key used to store timestamps to invalidate packets

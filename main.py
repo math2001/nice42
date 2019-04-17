@@ -10,7 +10,7 @@ logging.basicConfig(
 
 if len(sys.argv) != 2:
     print("Invalid number of arguments")
-    print("Usage: $ python main.py <action>")
+    print("Usage: $ python main.py <action> <debug port>")
     print("where <action> is:")
     print(" - server")
     print(" - client")

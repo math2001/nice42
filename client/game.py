@@ -116,3 +116,7 @@ class Game(Scene):
         async with self.players.cap_lim:
             for player in self.players.value.values():
                 player.render(surf, srect)
+
+    async def aclose(self):
+        # brute force
+        self.nursery.cancel_scope.cancel()
