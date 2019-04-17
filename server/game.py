@@ -9,7 +9,7 @@ from collections import deque
 from constants import *
 
 log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.INFO)
 
 class Game:
 

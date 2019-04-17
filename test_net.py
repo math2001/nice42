@@ -31,7 +31,6 @@ async def _send_string_by_chunks(stream, string, *, chunk_len=10):
         if j > len(string):
             j = len(string)
         await stream.send_all(bytes(string[i:j], encoding='utf-8'))
-        # await trio.sleep(0)
         i = j
 
 async def _assert_reading(stream, objects):

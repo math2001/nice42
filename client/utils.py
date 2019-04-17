@@ -44,13 +44,6 @@ def fontedit(font, **kwargs):
 def classname(obj):
     return obj.__class__.__name__
 
-class Screen:
-
-    @classmethod
-    def update(cls):
-        cls.surface = get_surface()
-        cls.rect = cls.surface.get_rect()
-
 class EventManager:
 
     events = {}

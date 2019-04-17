@@ -3,7 +3,6 @@
 
 import pygame
 import pygame.freetype
-from client.utils import Screen
 
 pygame.freetype.init()
 
@@ -18,8 +17,8 @@ class Scene:
     def handle_event(self, e):
         """ *pygame* event"""
            
-    async def render(self):
-        raise ValueError("No renderer for scene {}".format(self.__class__.__name__))
+    async def render(self, surf, rect):
+        pass
     
     async def update(self):
         pass
@@ -34,4 +33,4 @@ class Scene:
         return str(self)
 
     async def aclose(self):
-        self.nursery.cancel_scope.cancel()
+        pass

@@ -86,22 +86,22 @@ class Player:
         self.rect.left = int(round(self.pos[0]))
         self.rect.top = int(round(self.pos[1]))
 
-    def render(self):
+    def render(self, surf, srect):
         if self.pos is None:
             log.warning(f"{self} position is None")
             return
 
         if not DEBUG & DEBUG_NO_PLAYER:
-            pygame.draw.rect(Screen.surface, self.color, self.rect)
+            pygame.draw.rect(surf, self.color, self.rect)
 
         if DEBUG & DEBUG_SERVER_POSITION:
-            pygame.draw.rect(Screen.surface, self.color,
+            pygame.draw.rect(surf, self.color,
                              pygame.Rect(self.server_pos, PLAYER_SIZE), 1)
 
         if DEBUG & DEBUG_PREDICTED_POSITION and self.predicted_pos:
             r = pygame.Rect(self.predicted_pos, PLAYER_SIZE)
-            pygame.draw.rect(Screen.surface, self.color, r, 1)
-            pygame.draw.rect(Screen.surface, self.color, r.inflate(-4, -4), 1)
+            pygame.draw.rect(surf, self.color, r, 1)
+            pygame.draw.rect(surf, self.color, r.inflate(-4, -4), 1)
 
     def __str__(self):
         return f"<c.Player {self.username!r} {self.pos}>"

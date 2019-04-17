@@ -18,6 +18,3 @@ class Username(Scene):
 
     async def update(self):
         return 'game'
-
-    async def render(self):
-        pass

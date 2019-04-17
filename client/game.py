@@ -112,7 +112,7 @@ class Game(Scene):
                                                               state['color'])
                         log.info(f"Add new player {self.players.value[username]}")
 
-    async def render(self):
+    async def render(self, surf, srect):
         async with self.players.cap_lim:
             for player in self.players.value.values():
-                player.render()
+                player.render(surf, srect)

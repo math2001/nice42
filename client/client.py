@@ -7,7 +7,7 @@ import pygame.freetype
 import logging
 from collections import namedtuple
 from pygame.locals import *
-import lockables
+from lockables import Lockable
 from constants import *
 from client.utils import *
 
@@ -24,44 +24,43 @@ fonts = namedtuple('Fonts', 'mono')(
     pygame.freetype.SysFont("Fira Mono", 12)
 )
 
-
 MAX_FPS = 60
 
 class App:
 
+    scenes = {
+        'game': Game,
+        'username': Username
+    }
+
     def __init__(self):
-        EventManager.on("set mode", self.set_mode)
+        self.scene = Lockable(None)
 
-        self.scene = None
-
-        self.scenes = {
-            'game': Game,
-            'username': Username
-        }
-
-        Scene.fonts = fonts
-
-        EventManager.emit('set mode', (640, 480))
+        self.window = Lockable(None)
 
         pygame.display.set_caption('Nine42')
 
         # TODO: use lockables.Value. FPS and debug have nothing to do with each
         # other, they should be able to be changed at the same time (a dict
         # prevents that)
-        self.app_state = lockables.Dict(fps=0, debug=True)
+        self.fps = Lockable(0)
+        self.debug = Lockable(True)
 
-    def set_mode(self, *args, **kwargs):
-        self.window = pygame.display.set_mode(*args, **kwargs)
-        Screen.update()
+    async def set_mode(self, *args, **kwargs):
+        async with self.window.cap_lim:
+            self.window.value = {
+                "surf": pygame.display.set_mode(*args, **kwargs)
+            }
+            self.window.value['rect'] = self.window.value['surf'].get_rect()
 
-    async def show_debug_infos(self):
-        # TODO: maybe move this out of the game loop?
+    async def show_debug_infos(self, fps, surf, srect):
         text = f"{await self.scene.debug_string()} " \
                f"{self.scene} " \
-               f"{round(await self.app_state.get('fps')):2} fps"
+               f"{round(fps):2} fps"
+
         rect = fonts.mono.get_rect(text)
-        rect.bottomright = Screen.rect.bottomright
-        fonts.mono.render_to(Screen.surface, rect, text, fgcolor=WHITE,
+        rect.bottomright = srect.bottomright
+        fonts.mono.render_to(surf, rect, text, fgcolor=WHITE,
                                    bgcolor=BLACK)
     
     async def mainloop(self):
@@ -79,9 +78,9 @@ class App:
             # start the scene nursery
             async with trio.open_nursery() as snursery:
                 self.scene = self.scenes[new](snursery)
-                cancel_scope = trio.move_on_after(2)
-                with cancel_scope:
+                with trio.move_on_after(2) as cancel_scope:
                     await self.scene.init()
+
                 if cancel_scope.cancelled_caught:
                     raise ValueError(f"{new}.init took too long")
                 new = None
@@ -93,22 +92,31 @@ class App:
 
                         caught = self.scene.handle_event(event)
                         if not caught and event.type == KEYDOWN and event.key == K_BACKSPACE:
-                            await self.app_state.set('debug',
-                                not await self.app_state.get('debug'))
+                            async with self.debug.cap_lim:
+                                self.debug.value = not self.debug.value
 
                     new = await self.scene.update()
                     if new is False:
                         return await self._close_scene()
 
-                    Screen.surface.fill(BLACK)
                     await self.scene.update()
-                    await self.scene.render()
-                    if await self.app_state.get('debug'):
-                        await self.show_debug_infos()
-                    clock.tick(MAX_FPS)
-                    await self.app_state.set('fps', clock.get_fps())
-                    pygame.display.flip()
+
+                    async with self.window.cap_lim:
+                        surf = self.window.value['surf']
+                        rect = self.window.value['rect']
+                        surf.fill(0)
+                        await self.scene.render(surf, rect)
+
+                        # async with self.debug.cap_lim:
+                        #     await self.show_debug_infos()
+
+                        clock.tick(MAX_FPS)
+                        async with self.fps.cap_lim:
+                            self.fps.value = clock.get_fps()
+
+                        pygame.display.flip()
                     await trio.sleep(0)
+
                 log.info(f"Switching to new scene: {new}")
                 await self._close_scene()
 
@@ -118,6 +126,7 @@ class App:
         log.debug("Scene closed")
 
     async def run(self):
+        await self.set_mode((640, 480))
         await self.mainloop()
         log.debug("Main loop finished, exiting")
 
@@ -127,13 +136,12 @@ class App:
             log.debug("Stream closed")
         # TODO: I shouldn't have to do this. What are the tasks that are still
         # running?
-        Scene.nursery.cancel_scope.cancel()
+        # Scene.nursery.cancel_scope.cancel()
     
 async def run():
     pygame.init()
     pygame.freetype.init()
-    async with trio.open_nursery() as nursery:
-        Scene.nursery = nursery
-        nursery.start_soon(App().run)
+
+    await App().run()
     pygame.quit()
 
