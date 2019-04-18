@@ -39,6 +39,7 @@ class App:
         self.window = Lockable(None)
 
         pygame.display.set_caption('Nine42')
+        pygame.key.set_repeat(300, 50)
 
         # TODO: use lockables.Value. FPS and debug have nothing to do with each
         # other, they should be able to be changed at the same time (a dict
@@ -90,7 +91,7 @@ class App:
                         if event.type == QUIT:
                             return await self._close_scene()
 
-                        caught = self.scene.handle_event(event)
+                        caught = await self.scene.handle_event(event)
                         if not caught and event.type == KEYDOWN and event.key == K_BACKSPACE:
                             async with self.debug.cap_lim:
                                 self.debug.value = not self.debug.value

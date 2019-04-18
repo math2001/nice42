@@ -14,7 +14,7 @@ class Scene:
     async def init(self):
         pass
   
-    def handle_event(self, e):
+    async def handle_event(self, e):
         """ *pygame* event"""
            
     async def render(self, surf, rect):
