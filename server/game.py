@@ -148,12 +148,18 @@ class Game:
                 gone_players.append(notif['player'])
 
         async with self.players.cap_lim:
+
+            # remove the gone_players
+            for player in gone_players:
+                log.debug(f"Remove player: {player}")
+                del self.players.value[player.username]
+
             new_player_update = {
                 "type": "update",
                 "lps": self.lps,
                 "players": {},
                 "gone_players": {},
-                "players": {
+                "new_players": {
                     p.username: p.state_for_initialization()
                     for p in itertools.chain(new_players,
                                              self.players.value.values())
@@ -174,16 +180,6 @@ class Game:
                 }
             }
 
-            # add new_players to the existing player list
-            for player in new_players:
-                log.debug(f"Add new player: {player}")
-                self.players.value[player.username] = player
-
-            # remove the gone_players and add the new players
-            for player in gone_players:
-                log.debug(f"Remove player: {player}")
-                del self.players.value[player.username]
-
             # send updates to all the players
             async with trio.open_nursery() as nursery:
                 for player in self.players.value.values():
@@ -192,3 +188,8 @@ class Game:
                 for player in new_players:
                     nursery.start_soon(player.stream.write,
                                        new_player_update)
+
+            # add new_players to the existing player list
+            for player in new_players:
+                log.debug(f"Add new player: {player}")
+                self.players.value[player.username] = player

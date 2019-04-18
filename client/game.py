@@ -49,23 +49,6 @@ class Game(Scene):
         self.lps = lockables.Lockable(0)
         
     async def init(self):
-        log.debug("Waiting for 'init game' message")
-        initstate = await Scene.stream.read()
-        log.info("Got 'init game' message")
-        log.debug(f"state: {initstate}")
-
-        if initstate['type'] != 'init game':
-            raise ValueError(f"Expected type to be 'init game' in {state}")
-
-        async with self.players.cap_lim:
-            for username, player in initstate['new_players'].items():
-                self.players.value[username] = Player(
-                    username=username,
-                    pos=player['pos'],
-                    color=player['color']
-                )
-
-            log.debug(f"Got {len(self.players.value)} new players")
         log.debug("Start fetching updates from server forever")
         self.nursery.start_soon(fetch_updates_forever, Scene.stream,
                                 self.update_sendch)
@@ -88,29 +71,33 @@ class Game(Scene):
         try:
             update = self.update_getch.receive_nowait()
         except trio.WouldBlock:
-            # no updates available, guess what should be happening
+            # no updates available, "guess" what should be happening
             async with self.players.cap_lim:
                 for player in self.players.value.values():
                     player.update()
-        else:
-            if update['type'] == 'dead':
-                return 'dead'
-            elif update['type'] == 'update':
-                # update state from server
-                async with self.lps.cap_lim:
-                    self.lps.value = update['lps']
+            return
 
-                # TODO: this might be suitable for micro optimisation?
-                # ie. don't block for every write operation, and write all of them
-                # "at once" in a nursery
-                async with self.players.cap_lim:
-                    for username, state in update['players'].items():
-                        self.players.value[username].update_state(state['pos'])
+        if update['type'] != 'update':
+            log.warning(f"Recieved invalid update: {update}")
+            return
 
-                    for username, state in update['new_players'].items():
-                        self.players.value[username] = Player(username, state['pos'],
-                                                              state['color'])
-                        log.info(f"Add new player {self.players.value[username]}")
+        # update state from server
+        async with self.lps.cap_lim:
+            self.lps.value = update['lps']
+
+        async with self.players.cap_lim:
+
+            for username in update['gone_players']:
+                del self.players.value[username]
+                log.info(f"Remove player {username}")
+
+            for username, state in update['players'].items():
+                self.players.value[username].update_state(state['pos'])
+
+            for username, state in update['new_players'].items():
+                self.players.value[username] = Player(username, state['pos'],
+                                                      state['color'])
+                log.info(f"Add new player {self.players.value[username]}")
 
     async def render(self, surf, srect):
         async with self.players.cap_lim:

@@ -92,7 +92,6 @@ class Player:
     def state_for_initialization(self):
         """ State information that is send only once """
         return {
-            "username": self.username,
             "pos": self.pos,
             "color": self.color
         }
