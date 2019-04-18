@@ -16,13 +16,17 @@ if len(sys.argv) != 2:
     print(" - client")
     exit(2)
 
+async def run(fn):
+    async with trio.open_nursery() as nursery:
+        await fn(nursery)
+
 def main():
     if sys.argv[1] == 'server':
         import server
-        trio.run(server.run)
+        trio.run(run, server.run)
     elif sys.argv[1] == 'client':
         import client
-        trio.run(client.run)
+        trio.run(run, client.run)
     else:
         print(f"Invalid command {sys.argv[1]}")
         exit(1)

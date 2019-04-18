@@ -4,8 +4,7 @@ from server.game import Game
 
 log = getLogger(__name__)
 
-async def run():
+async def run(nursery):
     log.info("Star server")
-    async with trio.open_nursery() as nursery:
-        Game(nursery)
+    Game(nursery)
     log.info("Exiting server")
