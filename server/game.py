@@ -1,3 +1,4 @@
+import itertools
 import logging
 import trio
 import time
@@ -9,17 +10,15 @@ from collections import deque
 from constants import *
 
 log = logging.getLogger(__name__)
-log.setLevel(logging.INFO)
+log.setLevel(logging.DEBUG)
 
-async def read_available(getch):
-    """ Read all the available items from a channel into a list
-    """
-    items = []
+def read_available(getch):
+    """ Read all the available items from a channel"""
     while True:
         try:
-            items.append(getch.receive_nowait())
+            yield getch.receive_nowait()
         except trio.WouldBlock:
-            return items
+            return
 
 class Game:
 
@@ -134,9 +133,6 @@ class Game:
 
         self.last_update = time.time()
 
-        # read all the notification that are available
-        notifs = list(read_available(self.notif_getch))
-
         # this part is a bit tricky
         # To the new players, it sends every existing player and new player as a
         # "new_players", and doesn't say anything about the player that left.
@@ -145,7 +141,7 @@ class Game:
 
         new_players = []
         gone_players = []
-        for notif in notifs:
+        for notif in read_available(self.notif_getch):
             if notif['type'] == 'new_player':
                 new_players.append(notif['player'])
             elif notif['type'] == 'gone_players':
@@ -159,7 +155,8 @@ class Game:
                 "gone_players": {},
                 "players": {
                     p.username: p.state_for_initialization()
-                    for p in itertools.chain(new_players, self.players.value)
+                    for p in itertools.chain(new_players,
+                                             self.players.value.values())
                 }
             }
 
@@ -168,67 +165,30 @@ class Game:
                 "lps": self.lps,
                 "players": {
                     p.username: p.state_for_update()
-                    for p in self.players.value
+                    for p in self.players.value.values()
                 },
                 "gone_players": [p.username for p in gone_players],
                 "new_players": {
                     p.username: p.state_for_initialization()
-                    for p in self.players.value
+                    for p in new_players
                 }
             }
 
-            # remove the gone_players and add the new players
-            for username in gone_players:
-                del self.players.value[username]
-
+            # add new_players to the existing player list
             for player in new_players:
-                self.players.value[player.username] = username
+                log.debug(f"Add new player: {player}")
+                self.players.value[player.username] = player
 
+            # remove the gone_players and add the new players
+            for player in gone_players:
+                log.debug(f"Remove player: {player}")
+                del self.players.value[player.username]
+
+            # send updates to all the players
             async with trio.open_nursery() as nursery:
-                for player in self.players.value:
-                    nursery.start_soon(player.write, existing_player_update)
+                for player in self.players.value.values():
+                    nursery.start_soon(player.stream.write,
+                                       existing_player_update)
                 for player in new_players:
-                    nursery.start_soon(player.write, new_player_update)
-
-        return
-
-        # get new players from channel into a dict
-        new_players = {}
-        has_new_players = True
-        while has_new_players:
-            try:
-                new_player = self.new_player_getch.receive_nowait()
-            except trio.WouldBlock: # queue is empty
-                has_new_players = False
-            else:
-                new_players[new_player.username] = new_player
-
-        log.debug(f"Now aware of {len(new_players)} new players")
-
-        # create update object (players, new_players, lps, etc)
-
-        # don't add 'new' key if new == []? Bad for consistency, better for
-        # network perfs
-        async with self.players.cap_lim:
-            obj = {
-                'type': 'update',
-                'players': {p.username: p.state_for_update() \
-                            for p in self.players.value.values() if p.is_on_map},
-                'new_players': {p.username: p.state_for_initialization() \
-                                for p in new_players.values()},
-                'lps': self.lps
-            }
-
-            # add new players to the player dict
-            for username, player in new_players.items():
-                self.players.value[username] = player
-
-            # send update message to every player
-            log.debug(f"Sending to {len(self.players.value)} players: {obj}")
-
-            # put this in a nursery to .start_soon instead of await?
-            # how long can a .write hang for?
-            for player in self.players.value.values():
-                # should I make wrapper as player.write that would do
-                # player.stream.write?
-                await player.stream.write(obj)
+                    nursery.start_soon(player.stream.write,
+                                       new_player_update)

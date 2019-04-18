@@ -6,6 +6,7 @@
 - handle server close on client
 - handle player living on server
 - move away from lps and use absolute time!
+- show debug string on screen
 
 - change log level from the game
 
