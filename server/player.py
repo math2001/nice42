@@ -92,6 +92,7 @@ class Player:
     def state_for_initialization(self):
         """ State information that is send only once """
         return {
+            "username": self.username,
             "pos": self.pos,
             "color": self.color
         }
@@ -99,8 +100,7 @@ class Player:
     def state_for_update(self):
         """ State information that is send every update """
         return {
-            "pos": self.pos,
-            "color": self.color
+            "pos": self.pos
         }
 
     def __str__(self):

@@ -5,11 +5,12 @@
 	- check for same usernames
 - handle server close on client
 - handle player living on server
+- move away from lps and use absolute time!
 
 - change log level from the game
 
 feedback for trio:
-	- trio.open_memory_channel should maybe be boundable to a nursery or something
+	- trio.open_memory_channel should maybe be boundable to a nursery or something? Why???
 	- show example of the best way to use cap_lim (with block)
 
 how expensive is it to open a nursery in trio?
