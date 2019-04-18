@@ -26,6 +26,77 @@ Scene.fonts = namedtuple('Fonts', 'mono')(
 
 MAX_FPS = 60
 
+class SceneManager:
+
+    scenes = {
+        'game': Game,
+        'username': Username
+    }
+
+    def __init__(self, nursery):
+        self.screen = pygame.display.set_mode((640, 400))
+        self.srect = self.screen.get_rect()
+
+        self.fps = 0
+        self.debug = True
+
+        self.game_nursery = nursery
+
+    async def run_scene(self, scene):
+        for e in pygame.event.get():
+            if e.type == QUIT:
+                return False
+
+            caught = self.scene.handle_event()
+            if not caught:
+                pass
+
+    async def mainloop(self):
+        new_scene_name = 'username'
+        pdata = PersistentData()
+
+        while True:
+
+            async with trio.open_nursery() as scene_nursery:
+
+                scene = self.scenes[new_scene_name](scene_nursery, pdata)
+                with trio.move_on_after(2) as cancel_scope:
+                    await scene.init()
+                if cancel_scope.cancelled_caught:
+                    raise ValueError(f"{new_scene_name}.init took too long")
+
+                new_scene_name = None
+
+                clock = pygame.time.Clock()
+                while new_scene_name is None:
+
+                    new_scene_name = await self.run_scene(scene)
+
+                    if new_scene_name == False:
+                        return await self.close_scene(scene, scene_nursery)
+
+                    clock.tick(MAX_FPS)
+
+    async def close_scene(self, scene, scene_nursery):
+        """ Close the scene, with a few checks """
+        async with trio.move_on_after(2) as cancel_scope:
+            await scene.aclose()
+
+        if cancel_scope.cancelled_caught:
+            raise ValueError(f"Scene {scene} took too long to close")
+
+        tasks_left = len(scene_nursery.child_tasks) 
+        if tasks_left > 0:
+            raise ValueError(f"Scene {scene} should have closed all tasks "
+                             f"in the nursery. Got {tasks_left} more")
+
+
+
+class PersistentData:
+    pass
+
+
+
 class App:
 
     scenes = {
@@ -41,9 +112,6 @@ class App:
         pygame.display.set_caption('Nine42')
         pygame.key.set_repeat(300, 50)
 
-        # TODO: use lockables.Value. FPS and debug have nothing to do with each
-        # other, they should be able to be changed at the same time (a dict
-        # prevents that)
         self.fps = Lockable(0)
         self.debug = Lockable(True)
 
