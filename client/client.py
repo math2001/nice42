@@ -20,7 +20,7 @@ os.environ['SDL_VIDEO_CENTERED'] = '1'
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 
-fonts = namedtuple('Fonts', 'mono')(
+Scene.fonts = namedtuple('Fonts', 'mono')(
     pygame.freetype.SysFont("Fira Mono", 12)
 )
 
@@ -58,9 +58,9 @@ class App:
                f"{self.scene} " \
                f"{round(fps):2} fps"
 
-        rect = fonts.mono.get_rect(text)
+        rect = Scene.fonts.mono.get_rect(text)
         rect.bottomright = srect.bottomright
-        fonts.mono.render_to(surf, rect, text, fgcolor=WHITE,
+        Scene.fonts.mono.render_to(surf, rect, text, fgcolor=WHITE,
                                    bgcolor=BLACK)
     
     async def mainloop(self):

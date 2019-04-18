@@ -3,6 +3,7 @@ import pygame
 import logging
 from constants import *
 from client.utils import *
+from client.scene import Scene
 
 log = logging.getLogger(__name__)
 
@@ -90,6 +91,12 @@ class Player:
         if self.pos is None:
             log.warning(f"{self} position is None")
             return
+
+        with fontedit(Scene.fonts.mono, fgcolor=self.color) as font:
+            rect = font.get_rect(self.username)
+            rect.midbottom = self.rect.midtop
+            rect.top -= 10
+            font.render_to(surf, rect, self.username)
 
         if not DEBUG & DEBUG_NO_PLAYER:
             pygame.draw.rect(surf, self.color, self.rect)
