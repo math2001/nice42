@@ -3,7 +3,6 @@ import pygame
 import logging
 from constants import *
 from client.utils import *
-from client.scene import Scene
 
 log = logging.getLogger(__name__)
 
@@ -19,7 +18,7 @@ PREDICTION = 0
 
 class Player:
 
-    def __init__(self, username, pos, color):
+    def __init__(self, username, pos, color, fonts):
 
         self.server_pos = pos
         self.pos = list(self.server_pos)
@@ -33,6 +32,7 @@ class Player:
         self.predicted_pos = None
 
         self.last_server_update = time.time()
+        self.fonts = fonts
 
     def update_state(self, new_server_pos):
         """ Update state from the server 
@@ -92,7 +92,7 @@ class Player:
             log.warning(f"{self} position is None")
             return
 
-        with fontedit(Scene.fonts.mono, fgcolor=self.color) as font:
+        with fontedit(self.fonts.mono, fgcolor=self.color) as font:
             rect = font.get_rect(self.username)
             rect.midbottom = self.rect.midtop
             rect.top -= 10

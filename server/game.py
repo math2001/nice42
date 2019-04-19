@@ -85,10 +85,12 @@ class Game:
             # make sure there aren't duplicate username
             if player.username in self.players.value:
                 log.warning(f"Duplicate username: {player.username!r}")
-                await player.stream.write({'type': 'close',
+                await player.stream.write({'type': 'refused',
                                            'message': "used username"})
                 await player.stream.aclose()
                 return
+
+        await player.stream.write({'type': 'accepted'})
 
         log.info(f"Notification 'new_player' {player}")
         await self.notif_sendch.send({

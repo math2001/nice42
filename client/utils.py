@@ -8,6 +8,7 @@ BLACK = pygame.Color('black')
 PINK = pygame.Color('pink')
 RED = pygame.Color('red')
 BLUE = pygame.Color('blue')
+GREY = pygame.Color('grey')
 
 def mod(n):
     """ Return the magnitude of a number """

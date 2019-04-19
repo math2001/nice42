@@ -11,19 +11,19 @@ class Scene:
     def __init__(self, nursery):
         self.nursery = nursery
 
-    async def init(self):
+    def init(self):
         pass
   
-    async def handle_event(self, e):
+    def handle_event(self, e):
         """ *pygame* event"""
            
-    async def render(self, surf, rect):
+    def render(self, surf, rect):
         pass
     
-    async def update(self):
+    def update(self):
         pass
 
-    async def debug_string(self):
+    def debug_string(self):
         return ''
 
     def __str__(self):
@@ -32,5 +32,5 @@ class Scene:
     def __repr__(self):
         return str(self)
 
-    async def aclose(self):
+    def close(self):
         pass

@@ -1,3 +1,4 @@
+- static resource loader
 - fix application scene manager
 - fix animations rate (look at movement rates. It should be constant)
 - log debug level to file, all the time
