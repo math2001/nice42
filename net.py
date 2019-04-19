@@ -14,8 +14,6 @@ log.setLevel(logging.INFO)
 # everything uses the same key
 TIME_KEY = 't'
 
-# TODO: test that! it should be easy and fun with trio
-
 class ConnectionClosed(Exception):
     pass
 

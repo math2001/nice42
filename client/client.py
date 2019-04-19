@@ -7,7 +7,6 @@ import pygame.freetype
 import logging
 from collections import namedtuple
 from pygame.locals import *
-from lockables import Lockable
 from constants import *
 from client.utils import *
 
@@ -33,10 +32,6 @@ def load_fonts():
 MAX_FPS = 60
 
 class SceneManager:
-
-    """
-    Could (should) this just be written just as one big function?
-    """
 
     scenes = {
         'game': Game,
